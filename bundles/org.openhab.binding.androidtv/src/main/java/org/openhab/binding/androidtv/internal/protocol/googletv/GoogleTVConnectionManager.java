@@ -37,6 +37,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Hashtable;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -60,6 +61,8 @@ import org.openhab.binding.androidtv.internal.AndroidTVHandler;
 import org.openhab.binding.androidtv.internal.AndroidTVTranslationProvider;
 import org.openhab.binding.androidtv.internal.utils.AndroidTVPKI;
 import org.openhab.core.OpenHAB;
+import org.openhab.core.io.transport.mdns.MDNSService;
+import org.openhab.core.io.transport.mdns.ServiceDescription;
 import org.openhab.core.library.types.NextPreviousType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.PercentType;
@@ -133,6 +136,9 @@ public class GoogleTVConnectionManager {
     private StringBuffer sbShimReader = new StringBuffer();
     private String thisMsg = "";
 
+    private @Nullable MDNSService mdnsService;
+    private String ohAddress = "";
+
     private X509Certificate @Nullable [] shimX509ClientChain;
     private Certificate @Nullable [] shimClientChain;
     private Certificate @Nullable [] shimServerChain;
@@ -164,6 +170,8 @@ public class GoogleTVConnectionManager {
         this.config = config;
         this.handler = handler;
         this.translationProvider = handler.getTranslationProvider();
+        this.mdnsService = handler.getMDNSService();
+        this.ohAddress = handler.getOHAddress();
         this.connectionManager = this;
         this.scheduler = handler.getScheduler();
         this.encryptionKey = androidtvPKI.generateEncryptionKey();
@@ -176,6 +184,8 @@ public class GoogleTVConnectionManager {
         this.config = config;
         this.handler = handler;
         this.translationProvider = handler.getTranslationProvider();
+        this.mdnsService = handler.getMDNSService();
+        this.ohAddress = handler.getOHAddress();
         this.connectionManager = connectionManager;
         this.scheduler = handler.getScheduler();
         this.encryptionKey = androidtvPKI.generateEncryptionKey();
@@ -459,6 +469,7 @@ public class GoogleTVConnectionManager {
         }
 
         config.googletvPort = (config.googletvPort > 0) ? config.googletvPort : DEFAULT_PORT;
+        config.shimAddress = (!config.shimAddress.equals("")) ? config.shimAddress : ohAddress;
         config.mode = (!config.mode.equals("")) ? config.mode : DEFAULT_MODE;
 
         config.keystoreFileName = (!config.keystoreFileName.equals("")) ? config.keystoreFileName
@@ -473,6 +484,9 @@ public class GoogleTVConnectionManager {
         if (config.mode.equals(DEFAULT_MODE)) {
             deviceHealthJob = scheduler.scheduleWithFixedDelay(this::checkHealth, config.heartbeat, config.heartbeat,
                     TimeUnit.SECONDS);
+            if (config.shim) {
+                mdnsService.registerService(getDefaultServiceDescription());
+            }
         }
 
         try {
@@ -611,6 +625,13 @@ public class GoogleTVConnectionManager {
                 scheduleConnectRetry(config.reconnect); // Possibly a temporary problem. Try again later.
             }
         }
+    }
+
+    private ServiceDescription getDefaultServiceDescription() {
+        Hashtable<String, String> serviceProperties = new Hashtable<>();
+        // serviceProperties.put("ipAddress", config.shimAddress);
+        serviceProperties.put("bt", "1C:69:7A:AB:CD:EF");
+        return new ServiceDescription("_androidtvremote2._tcp.local.", "OH GoogleTV SHIM", 6646, serviceProperties);
     }
 
     public void shimInitialize() {
@@ -1365,7 +1386,9 @@ public class GoogleTVConnectionManager {
 
     public void dispose() {
         this.disposing = true;
-
+        if (config.shim) {
+            mdnsService.unregisterService(getDefaultServiceDescription());
+        }
         Future<?> asyncInitializeTask = this.asyncInitializeTask;
         if (asyncInitializeTask != null) {
             asyncInitializeTask.cancel(true); // Interrupt async init task if it isn't done yet

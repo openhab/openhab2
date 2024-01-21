@@ -20,6 +20,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.i18n.LocaleProvider;
 import org.openhab.core.i18n.TranslationProvider;
+import org.openhab.core.io.transport.mdns.MDNSService;
+import org.openhab.core.net.NetworkAddressService;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.binding.BaseThingHandlerFactory;
@@ -44,12 +46,18 @@ public class AndroidTVHandlerFactory extends BaseThingHandlerFactory {
 
     private final AndroidTVDynamicCommandDescriptionProvider commandDescriptionProvider;
     private final AndroidTVTranslationProvider translationProvider;
+    private final MDNSService mdnsService;
+    private final NetworkAddressService networkAddressService;
 
     @Activate
     public AndroidTVHandlerFactory(
             final @Reference AndroidTVDynamicCommandDescriptionProvider commandDescriptionProvider,
-            final @Reference TranslationProvider i18nProvider, final @Reference LocaleProvider localeProvider) {
+            final @Reference MDNSService mdnsService, final @Reference TranslationProvider i18nProvider,
+            final @Reference LocaleProvider localeProvider,
+            final @Reference NetworkAddressService networkAddressService) {
         this.commandDescriptionProvider = commandDescriptionProvider;
+        this.mdnsService = mdnsService;
+        this.networkAddressService = networkAddressService;
         this.translationProvider = new AndroidTVTranslationProvider(i18nProvider, localeProvider);
     }
 
@@ -61,6 +69,7 @@ public class AndroidTVHandlerFactory extends BaseThingHandlerFactory {
     @Override
     protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
-        return new AndroidTVHandler(thing, commandDescriptionProvider, translationProvider, thingTypeUID);
+        return new AndroidTVHandler(thing, commandDescriptionProvider, mdnsService, networkAddressService,
+                translationProvider, thingTypeUID);
     }
 }

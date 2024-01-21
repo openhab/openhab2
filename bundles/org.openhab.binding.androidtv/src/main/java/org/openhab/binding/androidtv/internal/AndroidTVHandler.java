@@ -27,7 +27,9 @@ import org.openhab.binding.androidtv.internal.protocol.googletv.GoogleTVConfigur
 import org.openhab.binding.androidtv.internal.protocol.googletv.GoogleTVConnectionManager;
 import org.openhab.binding.androidtv.internal.protocol.shieldtv.ShieldTVConfiguration;
 import org.openhab.binding.androidtv.internal.protocol.shieldtv.ShieldTVConnectionManager;
+import org.openhab.core.io.transport.mdns.MDNSService;
 import org.openhab.core.library.types.StringType;
+import org.openhab.core.net.NetworkAddressService;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
@@ -61,6 +63,8 @@ public class AndroidTVHandler extends BaseThingHandler {
     private static final int THING_STATUS_FREQUENCY = 250;
 
     private final AndroidTVDynamicCommandDescriptionProvider commandDescriptionProvider;
+    private final MDNSService mdnsService;
+    private final NetworkAddressService networkAddressService;
     private final AndroidTVTranslationProvider translationProvider;
     private final ThingTypeUID thingTypeUID;
     private final String thingID;
@@ -69,9 +73,12 @@ public class AndroidTVHandler extends BaseThingHandler {
     private boolean currentThingFailed = false;
 
     public AndroidTVHandler(Thing thing, AndroidTVDynamicCommandDescriptionProvider commandDescriptionProvider,
+            MDNSService mdnsService, NetworkAddressService networkAddressService,
             AndroidTVTranslationProvider translationProvider, ThingTypeUID thingTypeUID) {
         super(thing);
         this.commandDescriptionProvider = commandDescriptionProvider;
+        this.mdnsService = mdnsService;
+        this.networkAddressService = networkAddressService;
         this.translationProvider = translationProvider;
         this.thingTypeUID = thingTypeUID;
         this.thingID = this.getThing().getUID().getId();
@@ -79,6 +86,23 @@ public class AndroidTVHandler extends BaseThingHandler {
 
     public void setThingProperty(String property, String value) {
         thing.setProperty(property, value);
+    }
+
+    public MDNSService getMDNSService() {
+        return mdnsService;
+    }
+
+    public NetworkAddressService getNetworkAddressService() {
+        return networkAddressService;
+    }
+
+    public String getOHAddress() {
+        String ohAddress = networkAddressService.getPrimaryIpv4HostAddress();
+        if (ohAddress != null) {
+            return ohAddress;
+        } else {
+            return "";
+        }
     }
 
     public AndroidTVTranslationProvider getTranslationProvider() {
