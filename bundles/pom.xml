@@ -7,7 +7,23 @@
   <parent>
     <groupId>org.openhab.addons</groupId>
     <artifactId>org.openhab.addons.reactor</artifactId>
+<<<<<<< Upstream, based on main
     <version>5.0.0-SNAPSHOT</version>
+=======
+<<<<<<< Upstream, based on main
+<<<<<<< Upstream, based on main
+    <version>4.3.0-SNAPSHOT</version>
+=======
+        
+=======
+>>>>>>> 273244d Correcting pom.xml
+    <version>4.2.0-SNAPSHOT</version>
+<<<<<<< Upstream, based on main
+      
+>>>>>>> 421e2d1 Worxlandroid new binding
+=======
+>>>>>>> 273244d Correcting pom.xml
+>>>>>>> 6630871 Correcting pom.xml
   </parent>
 
   <groupId>org.openhab.addons.bundles</groupId>
@@ -62,7 +78,20 @@
     <module>org.openhab.binding.androidtv</module>
     <module>org.openhab.binding.anel</module>
     <module>org.openhab.binding.anthem</module>
+<<<<<<< Upstream, based on main
+=======
+<<<<<<< Upstream, based on main
+<<<<<<< Upstream, based on main
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.argoclima</module>
+<<<<<<< Upstream, based on main
+=======
+=======
+        
+>>>>>>> 421e2d1 Worxlandroid new binding
+=======
+>>>>>>> 273244d Correcting pom.xml
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.astro</module>
     <module>org.openhab.binding.asuswrt</module>
     <module>org.openhab.binding.atlona</module>
@@ -83,7 +112,10 @@
     <module>org.openhab.binding.bluetooth.generic</module>
     <module>org.openhab.binding.bluetooth.govee</module>
     <module>org.openhab.binding.bluetooth.grundfosalpha</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.bluetooth.hdpowerview</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.bluetooth.radoneye</module>
     <module>org.openhab.binding.bluetooth.roaming</module>
     <module>org.openhab.binding.bluetooth.ruuvitag</module>
@@ -91,7 +123,10 @@
     <module>org.openhab.binding.boschindego</module>
     <module>org.openhab.binding.boschshc</module>
     <module>org.openhab.binding.bosesoundtouch</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.broadlink</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.broadlinkthermostat</module>
     <module>org.openhab.binding.bsblan</module>
     <module>org.openhab.binding.bticinosmarther</module>
@@ -130,7 +165,11 @@
     <module>org.openhab.binding.ecovacs</module>
     <module>org.openhab.binding.ecowatt</module>
     <module>org.openhab.binding.ekey</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.electroluxappliance</module>
+=======
+    <module>org.openhab.binding.electroluxair</module>
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.elerotransmitterstick</module>
     <module>org.openhab.binding.elroconnects</module>
     <module>org.openhab.binding.emotiva</module>
@@ -139,7 +178,10 @@
     <module>org.openhab.binding.enigma2</module>
     <module>org.openhab.binding.enocean</module>
     <module>org.openhab.binding.enphase</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.entsoe</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.enturno</module>
     <module>org.openhab.binding.ephemeris</module>
     <module>org.openhab.binding.epsonprojector</module>
@@ -149,10 +191,16 @@
     <module>org.openhab.binding.exec</module>
     <module>org.openhab.binding.feed</module>
     <module>org.openhab.binding.feican</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.fenecon</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.fineoffsetweatherstation</module>
     <module>org.openhab.binding.flicbutton</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.flume</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.fmiweather</module>
     <module>org.openhab.binding.folderwatcher</module>
     <module>org.openhab.binding.folding</module>
@@ -195,7 +243,10 @@
     <module>org.openhab.binding.hpprinter</module>
     <module>org.openhab.binding.http</module>
     <module>org.openhab.binding.hue</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.huesync</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.hydrawise</module>
     <module>org.openhab.binding.hyperion</module>
     <module>org.openhab.binding.iammeter</module>
@@ -233,7 +284,10 @@
     <module>org.openhab.binding.lifx</module>
     <module>org.openhab.binding.linky</module>
     <module>org.openhab.binding.linuxinput</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.linktap</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.liquidcheck</module>
     <module>org.openhab.binding.lirc</module>
     <module>org.openhab.binding.livisismarthome</module>
@@ -251,10 +305,20 @@
     <module>org.openhab.binding.mecmeter</module>
     <module>org.openhab.binding.melcloud</module>
     <module>org.openhab.binding.mercedesme</module>
+<<<<<<< Upstream, based on main
+=======
+    <module>org.openhab.binding.meteoalerte</module>
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.meteoblue</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.meteofrance</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.meteostick</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.metofficedatahub</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.mffan</module>
     <module>org.openhab.binding.miele</module>
     <module>org.openhab.binding.mielecloud</module>
@@ -266,7 +330,10 @@
     <module>org.openhab.binding.minecraft</module>
     <module>org.openhab.binding.modbus</module>
     <module>org.openhab.binding.modbus.e3dc</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.modbus.kermi</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.modbus.sbc</module>
     <module>org.openhab.binding.modbus.studer</module>
     <module>org.openhab.binding.modbus.sungrow</module>
@@ -277,7 +344,10 @@
     <module>org.openhab.binding.mpd</module>
     <module>org.openhab.binding.mqtt</module>
     <module>org.openhab.binding.mqtt.espmilighthub</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.mqtt.fpp</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.mqtt.generic</module>
     <module>org.openhab.binding.mqtt.homeassistant</module>
     <module>org.openhab.binding.mqtt.homie</module>
@@ -286,7 +356,10 @@
     <module>org.openhab.binding.mycroft</module>
     <module>org.openhab.binding.mynice</module>
     <module>org.openhab.binding.mystrom</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.myuplink</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.nanoleaf</module>
     <module>org.openhab.binding.neato</module>
     <module>org.openhab.binding.neeo</module>
@@ -296,6 +369,10 @@
     <module>org.openhab.binding.network</module>
     <module>org.openhab.binding.networkupstools</module>
     <module>org.openhab.binding.nibeheatpump</module>
+<<<<<<< Upstream, based on main
+=======
+    <module>org.openhab.binding.nibeuplink</module>
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.nikobus</module>
     <module>org.openhab.binding.nikohomecontrol</module>
     <module>org.openhab.binding.nobohub</module>
@@ -326,7 +403,20 @@
     <module>org.openhab.binding.pegelonline</module>
     <module>org.openhab.binding.pentair</module>
     <module>org.openhab.binding.phc</module>
+<<<<<<< Upstream, based on main
+=======
+<<<<<<< Upstream, based on main
+<<<<<<< Upstream, based on main
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.pihole</module>
+<<<<<<< Upstream, based on main
+=======
+=======
+        
+>>>>>>> 421e2d1 Worxlandroid new binding
+=======
+>>>>>>> 273244d Correcting pom.xml
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.pilight</module>
     <module>org.openhab.binding.pioneeravr</module>
     <module>org.openhab.binding.pixometer</module>
@@ -374,7 +464,20 @@
     <module>org.openhab.binding.serialbutton</module>
     <module>org.openhab.binding.shelly</module>
     <module>org.openhab.binding.silvercrestwifisocket</module>
+<<<<<<< Upstream, based on main
+=======
+<<<<<<< Upstream, based on main
+<<<<<<< Upstream, based on main
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.siemenshvac</module>
+<<<<<<< Upstream, based on main
+=======
+=======
+        
+>>>>>>> 421e2d1 Worxlandroid new binding
+=======
+>>>>>>> 273244d Correcting pom.xml
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.siemensrds</module>
     <module>org.openhab.binding.sinope</module>
     <module>org.openhab.binding.sleepiq</module>
@@ -389,7 +492,20 @@
     <module>org.openhab.binding.solaredge</module>
     <module>org.openhab.binding.solarforecast</module>
     <module>org.openhab.binding.solarlog</module>
+<<<<<<< Upstream, based on main
+=======
+<<<<<<< Upstream, based on main
+<<<<<<< Upstream, based on main
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.solarman</module>
+<<<<<<< Upstream, based on main
+=======
+=======
+        
+>>>>>>> 421e2d1 Worxlandroid new binding
+=======
+>>>>>>> 273244d Correcting pom.xml
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.solarmax</module>
     <module>org.openhab.binding.solarwatt</module>
     <module>org.openhab.binding.solax</module>
@@ -404,7 +520,10 @@
     <module>org.openhab.binding.speedtest</module>
     <module>org.openhab.binding.spotify</module>
     <module>org.openhab.binding.squeezebox</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.sunsynk</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.surepetcare</module>
     <module>org.openhab.binding.synopanalyzer</module>
     <module>org.openhab.binding.systeminfo</module>
@@ -417,8 +536,21 @@
     <module>org.openhab.binding.teleinfo</module>
     <module>org.openhab.binding.tellstick</module>
     <module>org.openhab.binding.tesla</module>
+<<<<<<< Upstream, based on main
+=======
+<<<<<<< Upstream, based on main
+<<<<<<< Upstream, based on main
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.teslapowerwall</module>
     <module>org.openhab.binding.teslascope</module>
+<<<<<<< Upstream, based on main
+=======
+=======
+        
+>>>>>>> 421e2d1 Worxlandroid new binding
+=======
+>>>>>>> 273244d Correcting pom.xml
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.tibber</module>
     <module>org.openhab.binding.tivo</module>
     <module>org.openhab.binding.touchwand</module>
@@ -441,7 +573,10 @@
     <module>org.openhab.binding.verisure</module>
     <module>org.openhab.binding.vesync</module>
     <module>org.openhab.binding.vigicrues</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.visualcrossing</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.vitotronic</module>
     <module>org.openhab.binding.vizio</module>
     <module>org.openhab.binding.volvooncall</module>
@@ -454,7 +589,10 @@
     <module>org.openhab.binding.wemo</module>
     <module>org.openhab.binding.wifiled</module>
     <module>org.openhab.binding.windcentrale</module>
+<<<<<<< Upstream, based on main
     <module>org.openhab.binding.wiz</module>
+=======
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.binding.wlanthermo</module>
     <module>org.openhab.binding.wled</module>
     <module>org.openhab.binding.wolfsmartset</module>
@@ -491,7 +629,21 @@
     <module>org.openhab.voice.voicerss</module>
     <module>org.openhab.voice.voskstt</module>
     <module>org.openhab.voice.watsonstt</module>
+<<<<<<< Upstream, based on main
+=======
+<<<<<<< Upstream, based on main
+<<<<<<< Upstream, based on main
+>>>>>>> 6630871 Correcting pom.xml
     <module>org.openhab.voice.whisperstt</module>
+<<<<<<< Upstream, based on main
+=======
+=======
+        
+      
+>>>>>>> 421e2d1 Worxlandroid new binding
+=======
+>>>>>>> 273244d Correcting pom.xml
+>>>>>>> 6630871 Correcting pom.xml
   </modules>
 
   <properties>
