@@ -379,6 +379,22 @@ public class AutomowerHandler extends BaseThingHandler {
             updateState(CHANNEL_STATISTIC_TOTAL_SEARCHING_TIME,
                     new QuantityType<>(mower.getAttributes().getStatistics().getTotalSearchingTime(), Units.SECOND));
 
+            if (mower.getAttributes().getStatistics().getTotalRunningTime() != 0) {
+                updateState(CHANNEL_STATISTIC_TOTAL_CUTTING_PERCENT,
+                        new QuantityType<>(
+                                (float) mower.getAttributes().getStatistics().getTotalCuttingTime()
+                                        / (float) mower.getAttributes().getStatistics().getTotalRunningTime() * 100.0,
+                                Units.PERCENT));
+                updateState(CHANNEL_STATISTIC_TOTAL_SEARCHING_PERCENT,
+                        new QuantityType<>(
+                                (float) mower.getAttributes().getStatistics().getTotalSearchingTime()
+                                        / (float) mower.getAttributes().getStatistics().getTotalRunningTime() * 100.0,
+                                Units.PERCENT));
+            } else {
+                updateState(CHANNEL_STATISTIC_TOTAL_CUTTING_PERCENT, new QuantityType<>(0, Units.PERCENT));
+                updateState(CHANNEL_STATISTIC_TOTAL_SEARCHING_PERCENT, new QuantityType<>(0, Units.PERCENT));
+            }
+
             updateState(LAST_POSITION,
                     new PointType(new DecimalType(mower.getAttributes().getLastPosition().getLatitude()),
                             new DecimalType(mower.getAttributes().getLastPosition().getLongitude())));
