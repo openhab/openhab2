@@ -368,11 +368,11 @@ public class AutomowerHandler extends BaseThingHandler {
                     new QuantityType<>(mower.getAttributes().getStatistics().getTotalChargingTime(), Units.SECOND));
             updateState(CHANNEL_STATISTIC_TOTAL_CUTTING_TIME,
                     new QuantityType<>(mower.getAttributes().getStatistics().getTotalCuttingTime(), Units.SECOND));
-            updateState(CHANNEL_STATISTIC_TOTAL_DRIVEN_DISTANCE,
-                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalDrivenDistance(), SIUnits.METRE));
+            updateState(CHANNEL_STATISTIC_TOTAL_DRIVE_DISTANCE,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalDriveDistance(), SIUnits.METRE));
             logger.warn("mower.getAttributes().getStatistics().getTotalDrivenDistance(): {}, QuantityType(): {}",
-                    mower.getAttributes().getStatistics().getTotalDrivenDistance(),
-                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalDrivenDistance(), SIUnits.METRE)
+                    mower.getAttributes().getStatistics().getTotalDriveDistance(),
+                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalDriveDistance(), SIUnits.METRE)
                             .toString());
             updateState(CHANNEL_STATISTIC_TOTAL_RUNNING_TIME,
                     new QuantityType<>(mower.getAttributes().getStatistics().getTotalRunningTime(), Units.SECOND));
