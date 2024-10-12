@@ -313,21 +313,29 @@ public class AutomowerHandler extends BaseThingHandler {
 
             if (mower.getAttributes().getMower().getState() != State.RESTRICTED) {
                 updateState(CHANNEL_STATUS_STATE, new StringType(mower.getAttributes().getMower().getState().name()));
-                updateState(CHANNEL_PLANNER_RESTRICTED_REASON, new StringType(RestrictedReason.NONE.name()));
-                updateState(CHANNEL_PLANNER_EXTERNAL_REASON, new DecimalType(0));
             } else {
                 updateState(CHANNEL_STATUS_STATE,
                         new StringType(restrictedState(mower.getAttributes().getPlanner().getRestrictedReason())));
-                updateState(CHANNEL_PLANNER_RESTRICTED_REASON,
-                        new StringType(mower.getAttributes().getPlanner().getRestrictedReason().name()));
-                if (mower.getAttributes().getPlanner().getRestrictedReason() != RestrictedReason.EXTERNAL) {
-                    updateState(CHANNEL_PLANNER_EXTERNAL_REASON, new DecimalType(0));
-                } else {
-                    updateState(CHANNEL_PLANNER_EXTERNAL_REASON,
-                            new DecimalType(mower.getAttributes().getPlanner().getExternalReason()));
-                }
             }
 
+            /*
+             * if (mower.getAttributes().getMower().getState() != State.RESTRICTED) {
+             * updateState(CHANNEL_STATUS_STATE, new StringType(mower.getAttributes().getMower().getState().name()));
+             * updateState(CHANNEL_PLANNER_RESTRICTED_REASON, new StringType(RestrictedReason.NONE.name()));
+             * updateState(CHANNEL_PLANNER_EXTERNAL_REASON, new DecimalType(0));
+             * } else {
+             * updateState(CHANNEL_STATUS_STATE,
+             * new StringType(restrictedState(mower.getAttributes().getPlanner().getRestrictedReason())));
+             * updateState(CHANNEL_PLANNER_RESTRICTED_REASON,
+             * new StringType(mower.getAttributes().getPlanner().getRestrictedReason().name()));
+             * if (mower.getAttributes().getPlanner().getRestrictedReason() != RestrictedReason.EXTERNAL) {
+             * updateState(CHANNEL_PLANNER_EXTERNAL_REASON, new DecimalType(0));
+             * } else {
+             * updateState(CHANNEL_PLANNER_EXTERNAL_REASON,
+             * new DecimalType(mower.getAttributes().getPlanner().getExternalReason()));
+             * }
+             * }
+             */
             updateState(CHANNEL_STATUS_LAST_UPDATE,
                     new DateTimeType(toZonedDateTime(mower.getAttributes().getMetadata().getStatusTimestamp())));
             updateState(CHANNEL_STATUS_BATTERY,
@@ -354,6 +362,11 @@ public class AutomowerHandler extends BaseThingHandler {
             }
             updateState(CHANNEL_PLANNER_OVERRIDE_ACTION,
                     new StringType(mower.getAttributes().getPlanner().getOverride().getAction().name()));
+            updateState(CHANNEL_PLANNER_RESTRICTED_REASON,
+                    new StringType(mower.getAttributes().getPlanner().getRestrictedReason().name()));
+            updateState(CHANNEL_PLANNER_EXTERNAL_REASON,
+                    new DecimalType(mower.getAttributes().getPlanner().getExternalReason()));
+
             updateState(CHANNEL_CALENDAR_TASKS,
                     new StringType(gson.toJson(mower.getAttributes().getCalendar().getTasks())));
 
