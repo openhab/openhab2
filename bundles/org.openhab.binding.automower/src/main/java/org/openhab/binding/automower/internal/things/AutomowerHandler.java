@@ -16,8 +16,8 @@ import static org.openhab.binding.automower.internal.AutomowerBindingConstants.*
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -39,9 +39,11 @@ import org.openhab.binding.automower.internal.rest.exceptions.AutomowerCommunica
 import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.library.types.DateTimeType;
 import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.PointType;
 import org.openhab.core.library.types.QuantityType;
 import org.openhab.core.library.types.StringType;
+import org.openhab.core.library.unit.SIUnits;
 import org.openhab.core.library.unit.Units;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.ChannelUID;
@@ -107,6 +109,9 @@ public class AutomowerHandler extends BaseThingHandler {
         if (RefreshType.REFRESH == command) {
             logger.debug("Refreshing channel '{}'", channelUID);
             refreshChannels(channelUID);
+        } else if (CHANNEL_CALENDAR_TASKS.equals(channelUID.getId())) {
+            logger.debug("Sending calendar '{}'", command);
+            sendAutomowerCalendar(command.toString());
         } else {
             AutomowerCommand.fromChannelUID(channelUID).ifPresent(commandName -> {
                 logger.debug("Sending command '{}'", commandName);
@@ -269,6 +274,29 @@ public class AutomowerHandler extends BaseThingHandler {
         updateAutomowerState();
     }
 
+    /**
+     * Sends a calendar to the automower
+     *
+     * @param calendar The calendar that should be sent. It is using the same json structure (start, duration, ...)
+     *            as provided when reading the channel
+     */
+    public void sendAutomowerCalendar(String calendar) {
+        logger.debug("Sending calendar '{}'", calendar);
+        String id = automowerId.get();
+        try {
+            AutomowerBridge automowerBridge = getAutomowerBridge();
+            if (automowerBridge != null) {
+                automowerBridge.sendAutomowerCalendar(id, calendar);
+            } else {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "@text/conf-error-no-bridge");
+            }
+        } catch (AutomowerCommunicationException e) {
+            logger.warn("Unable to send calendar to automower: {}, Error: {}", id, e.getMessage());
+        }
+
+        updateAutomowerState();
+    }
+
     private String restrictedState(RestrictedReason reason) {
         return "RESTRICTED_" + reason.name();
     }
@@ -278,6 +306,8 @@ public class AutomowerHandler extends BaseThingHandler {
             updateState(CHANNEL_STATUS_NAME, new StringType(mower.getAttributes().getSystem().getName()));
             updateState(CHANNEL_STATUS_MODE, new StringType(mower.getAttributes().getMower().getMode().name()));
             updateState(CHANNEL_STATUS_ACTIVITY, new StringType(mower.getAttributes().getMower().getActivity().name()));
+            updateState(CHANNEL_STATUS_INACTIVE_REASON,
+                    new StringType(mower.getAttributes().getMower().getInactiveReason().name()));
 
             if (mower.getAttributes().getMower().getState() != State.RESTRICTED) {
                 updateState(CHANNEL_STATUS_STATE, new StringType(mower.getAttributes().getMower().getState().name()));
@@ -300,6 +330,9 @@ public class AutomowerHandler extends BaseThingHandler {
                 updateState(CHANNEL_STATUS_ERROR_TIMESTAMP, new DateTimeType(toZonedDateTime(errorCodeTimestamp)));
             }
 
+            updateState(CHANNEL_STATUS_ERROR_CONFIRMABLE,
+                    OnOffType.from(mower.getAttributes().getMower().getIsErrorConfirmable() == true));
+
             long nextStartTimestamp = mower.getAttributes().getPlanner().getNextStartTimestamp();
             // If next start timestamp is 0 it means the mower should start now, so using current timestamp
             if (nextStartTimestamp == 0L) {
@@ -308,15 +341,48 @@ public class AutomowerHandler extends BaseThingHandler {
                 updateState(CHANNEL_PLANNER_NEXT_START, new DateTimeType(toZonedDateTime(nextStartTimestamp)));
             }
             updateState(CHANNEL_PLANNER_OVERRIDE_ACTION,
-                    new StringType(mower.getAttributes().getPlanner().getOverride().getAction()));
-
+                    new StringType(mower.getAttributes().getPlanner().getOverride().getAction().name()));
+            updateState(CHANNEL_PLANNER_RESTRICTED_REASON,
+                    new StringType(mower.getAttributes().getPlanner().getRestrictedReason().name()));
+            updateState(CHANNEL_PLANNER_EXTERNAL_REASON,
+                    new DecimalType(mower.getAttributes().getPlanner().getExternalReason()));
             updateState(CHANNEL_CALENDAR_TASKS,
                     new StringType(gson.toJson(mower.getAttributes().getCalendar().getTasks())));
+
+            updateState(CHANNEL_SETTING_CUTTING_HEIGHT,
+                    new DecimalType(mower.getAttributes().getSettings().getCuttingHeight()));
+            updateState(CHANNEL_SETTING_HEADLIGHT_MODE,
+                    new StringType(mower.getAttributes().getSettings().getHeadlight().getHeadlightMode().name()));
+            logger.warn("mower.getAttributes().getStatistics().getCuttingBladeUsageTime(): {}, QuantityType(): {}",
+                    mower.getAttributes().getStatistics().getCuttingBladeUsageTime(),
+                    new QuantityType<>(mower.getAttributes().getStatistics().getCuttingBladeUsageTime(), Units.SECOND)
+                            .toString());
+
+            updateState(CHANNEL_STATISTIC_CUTTING_BLADE_USAGE_TIME,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getCuttingBladeUsageTime(), Units.SECOND));
+            updateState(CHANNEL_STATISTIC_NUMBER_OF_CHARGING_CYCLES,
+                    new DecimalType(mower.getAttributes().getStatistics().getNumberOfChargingCycles()));
+            updateState(CHANNEL_STATISTIC_NUMBER_OF_COLLISIONS,
+                    new DecimalType(mower.getAttributes().getStatistics().getNumberOfCollisions()));
+            updateState(CHANNEL_STATISTIC_TOTAL_CHARGING_TIME,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalChargingTime(), Units.SECOND));
+            updateState(CHANNEL_STATISTIC_TOTAL_CUTTING_TIME,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalCuttingTime(), Units.SECOND));
+            updateState(CHANNEL_STATISTIC_TOTAL_DRIVEN_DISTANCE,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalDrivenDistance(), SIUnits.METRE));
+            logger.warn("mower.getAttributes().getStatistics().getTotalDrivenDistance(): {}, QuantityType(): {}",
+                    mower.getAttributes().getStatistics().getTotalDrivenDistance(),
+                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalDrivenDistance(), SIUnits.METRE)
+                            .toString());
+            updateState(CHANNEL_STATISTIC_TOTAL_RUNNING_TIME,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalRunningTime(), Units.SECOND));
+            updateState(CHANNEL_STATISTIC_TOTAL_SEARCHING_TIME,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getTotalSearchingTime(), Units.SECOND));
 
             updateState(LAST_POSITION,
                     new PointType(new DecimalType(mower.getAttributes().getLastPosition().getLatitude()),
                             new DecimalType(mower.getAttributes().getLastPosition().getLongitude())));
-            ArrayList<Position> positions = mower.getAttributes().getPositions();
+            List<Position> positions = mower.getAttributes().getPositions();
             for (int i = 0; i < positions.size(); i++) {
                 updateState(CHANNEL_POSITIONS.get(i), new PointType(new DecimalType(positions.get(i).getLatitude()),
                         new DecimalType(positions.get(i).getLongitude())));
@@ -330,14 +396,29 @@ public class AutomowerHandler extends BaseThingHandler {
 
         properties.put(AutomowerBindingConstants.AUTOMOWER_ID, mower.getId());
 
-        if (mower.getAttributes() != null && mower.getAttributes().getSystem() != null) {
-            properties.put(AutomowerBindingConstants.AUTOMOWER_SERIAL_NUMBER,
-                    mower.getAttributes().getSystem().getSerialNumber());
-            properties.put(AutomowerBindingConstants.AUTOMOWER_MODEL, mower.getAttributes().getSystem().getModel());
-            properties.put(AutomowerBindingConstants.AUTOMOWER_NAME, mower.getAttributes().getSystem().getName());
-        }
+        if (mower.getAttributes() != null) {
+            if (mower.getAttributes().getSystem() != null) {
+                properties.put(AutomowerBindingConstants.AUTOMOWER_SERIAL_NUMBER,
+                        mower.getAttributes().getSystem().getSerialNumber());
+                properties.put(AutomowerBindingConstants.AUTOMOWER_MODEL, mower.getAttributes().getSystem().getModel());
+                properties.put(AutomowerBindingConstants.AUTOMOWER_NAME, mower.getAttributes().getSystem().getName());
+            }
 
-        updateProperties(properties);
+            if (mower.getAttributes().getCapabilities() != null) {
+                properties.put(AutomowerBindingConstants.AUTOMOWER_CAN_CONFIRM_ERROR,
+                        mower.getAttributes().getCapabilities().canConfirmError().toString());
+                properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_HEADLIGHTS,
+                        mower.getAttributes().getCapabilities().hasHeadlights().toString());
+                properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_POSITION,
+                        mower.getAttributes().getCapabilities().hasPosition().toString());
+                properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_STAY_OUT_ZONES,
+                        mower.getAttributes().getCapabilities().hasStayOutZones().toString());
+                properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_WORK_AREAS,
+                        mower.getAttributes().getCapabilities().hasWorkAreas().toString());
+            } else {
+                logger.warn("mower.getAttributes().getCapabilities() != null");
+            }
+        }
     }
 
     /**
