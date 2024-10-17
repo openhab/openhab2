@@ -654,19 +654,14 @@ public class AutomowerHandler extends BaseThingHandler {
     }
 
     private void initializeProperties(@Nullable Mower mower) {
-        Map<String, String> properties = editProperties();
-
         if (isValidResult(mower)) {
+            Map<String, String> properties = editProperties();
             properties.put(AutomowerBindingConstants.AUTOMOWER_ID, mower.getId());
 
             properties.put(AutomowerBindingConstants.AUTOMOWER_SERIAL_NUMBER,
                     mower.getAttributes().getSystem().getSerialNumber());
             properties.put(AutomowerBindingConstants.AUTOMOWER_MODEL, mower.getAttributes().getSystem().getModel());
             properties.put(AutomowerBindingConstants.AUTOMOWER_NAME, mower.getAttributes().getSystem().getName());
-
-            logger.warn("mower.getAttributes().getCapabilities(): {}, canConfirmError(): {}",
-                    mower.getAttributes().getCapabilities(),
-                    (mower.getAttributes().getCapabilities().canConfirmError() ? "yes" : "no"));
 
             properties.put(AutomowerBindingConstants.AUTOMOWER_CAN_CONFIRM_ERROR,
                     (mower.getAttributes().getCapabilities().canConfirmError() ? "yes" : "no"));
@@ -678,6 +673,8 @@ public class AutomowerHandler extends BaseThingHandler {
                     (mower.getAttributes().getCapabilities().hasStayOutZones() ? "yes" : "no"));
             properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_WORK_AREAS,
                     (mower.getAttributes().getCapabilities().hasWorkAreas() ? "yes" : "no"));
+
+            updateProperties(properties);
         }
     }
 
