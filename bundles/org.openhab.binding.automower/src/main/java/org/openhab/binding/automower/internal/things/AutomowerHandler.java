@@ -120,6 +120,8 @@ public class AutomowerHandler extends BaseThingHandler {
         } else if (channelUID.getId().equals(CHANNEL_SETTING_CUTTING_HEIGHT)
                 || channelUID.getId().equals(CHANNEL_SETTING_HEADLIGHT_MODE)) {
             sendAutomowerSettings(command, channelUID.getId());
+        } else if (channelUID.getId().equals(CHANNEL_COMMAND_CONFIRM_ERROR)) {
+            sendAutomowerConfirmError(command);
         } else {
             AutomowerCommand.fromChannelUID(channelUID).ifPresent(commandName -> {
                 logger.debug("Sending command '{}'", commandName);
@@ -414,6 +416,36 @@ public class AutomowerHandler extends BaseThingHandler {
             }
 
             updateAutomowerState();
+        }
+    }
+
+    /**
+     * Confirm current non fatal error on the mower
+     *
+     * @param command The command that was used to trigger the channel
+     */
+    public void sendAutomowerConfirmError(Command command) {
+        logger.debug("Sending ConfirmError '{}'", command.toString());
+        if (command instanceof OnOffType cmd) {
+            if (cmd == OnOffType.ON) {
+                updateState(CHANNEL_COMMAND_CONFIRM_ERROR, OnOffType.OFF);
+                if (isValidResult(mowerState) && (mowerState.getAttributes().getCapabilities().canConfirmError())
+                        && (mowerState.getAttributes().getMower().getIsErrorConfirmable())) {
+                    String id = automowerId.get();
+                    try {
+                        AutomowerBridge automowerBridge = getAutomowerBridge();
+                        if (automowerBridge != null) {
+                            automowerBridge.sendAutomowerConfirmError(id);
+                        } else {
+                            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                                    "@text/conf-error-no-bridge");
+                        }
+                    } catch (AutomowerCommunicationException e) {
+                        logger.warn("Unable to send ConfirmError to automower: {}, Error: {}", id, e.getMessage());
+                    }
+                    updateAutomowerState();
+                }
+            }
         }
     }
 
