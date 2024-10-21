@@ -35,6 +35,7 @@ import org.openhab.binding.automower.internal.actions.AutomowerActions;
 import org.openhab.binding.automower.internal.bridge.AutomowerBridge;
 import org.openhab.binding.automower.internal.bridge.AutomowerBridgeHandler;
 import org.openhab.binding.automower.internal.rest.api.automowerconnect.dto.CalendarTask;
+import org.openhab.binding.automower.internal.rest.api.automowerconnect.dto.Capabilities;
 import org.openhab.binding.automower.internal.rest.api.automowerconnect.dto.Headlight;
 import org.openhab.binding.automower.internal.rest.api.automowerconnect.dto.HeadlightMode;
 import org.openhab.binding.automower.internal.rest.api.automowerconnect.dto.Mower;
@@ -478,7 +479,6 @@ public class AutomowerHandler extends BaseThingHandler {
      *
      * @param index Index of zone
      * @param enable Zone enabled or disabled
-     * 
      */
     public void sendAutomowerStayOutZone(int index, boolean enable) {
         if (isValidResult(mowerState)) {
@@ -494,6 +494,7 @@ public class AutomowerHandler extends BaseThingHandler {
      * @param enable Zone enabled or disabled
      */
     public void sendAutomowerStayOutZone(String zoneId, boolean enable) {
+        logger.debug("Sending StayOutZone: zoneId {}, enable {}", zoneId, enable);
         if (isValidResult(mowerState)) {
             MowerStayOutZoneAttributes attributes = new MowerStayOutZoneAttributes();
             attributes.setEnable(enable);
@@ -551,6 +552,7 @@ public class AutomowerHandler extends BaseThingHandler {
      * @param cuttingHeight CuttingHeight of the WorkArea
      */
     public void sendAutomowerWorkArea(long workAreaId, boolean enable, byte cuttingHeight) {
+        logger.debug("Sending WorkArea: workAreaId {}, enable {}, cuttingHeight {}", workAreaId, enable, cuttingHeight);
         if (isValidResult(mowerState)) {
             // update local cache ...
             WorkArea workArea = getWorkAreaById(mowerState, workAreaId);
@@ -613,6 +615,7 @@ public class AutomowerHandler extends BaseThingHandler {
      * @param headlightMode Headlight mode as string to be sent
      */
     public void sendAutomowerSettings(byte cuttingHeight, HeadlightMode headlightMode) {
+        logger.debug("Sending Settings: cuttingHeight {}, headlightMode {}", cuttingHeight, headlightMode.toString());
         if (isValidResult(mowerState)) {
             Settings settings = new Settings();
             settings.setCuttingHeight(cuttingHeight);
@@ -791,20 +794,6 @@ public class AutomowerHandler extends BaseThingHandler {
 
             updateState(CHANNEL_STAYOUTZONES_DIRTY, OnOffType.from(mower.getAttributes().getStayOutZones().isDirty()));
 
-            /*
-             * updateState(CHANNEL_CALENDAR_TASKS,
-             * new StringType(gson.toJson(mower.getAttributes().getCalendar().getTasks())));
-             * 
-             * - start
-             * - duration
-             * - monday
-             * - tuesday
-             * - wednesday
-             * - thursday
-             * - friday
-             * - saturday
-             * - sunday
-             */
             List<CalendarTask> calendarTasks = mower.getAttributes().getCalendar().getTasks();
             int j = 0;
             for (int i = 0; i < calendarTasks.size() && j < CHANNEL_CALENDARTASKS.size(); i++) {
@@ -887,16 +876,17 @@ public class AutomowerHandler extends BaseThingHandler {
             properties.put(AutomowerBindingConstants.AUTOMOWER_MODEL, mower.getAttributes().getSystem().getModel());
             properties.put(AutomowerBindingConstants.AUTOMOWER_NAME, mower.getAttributes().getSystem().getName());
 
+            Capabilities capabilities = mower.getAttributes().getCapabilities();
             properties.put(AutomowerBindingConstants.AUTOMOWER_CAN_CONFIRM_ERROR,
-                    (mower.getAttributes().getCapabilities().canConfirmError() ? "yes" : "no"));
+                    (capabilities.canConfirmError() ? "yes" : "no"));
             properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_HEADLIGHTS,
-                    (mower.getAttributes().getCapabilities().hasHeadlights() ? "yes" : "no"));
+                    (capabilities.hasHeadlights() ? "yes" : "no"));
             properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_POSITION,
-                    (mower.getAttributes().getCapabilities().hasPosition() ? "yes" : "no"));
+                    (capabilities.hasPosition() ? "yes" : "no"));
             properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_STAY_OUT_ZONES,
-                    (mower.getAttributes().getCapabilities().hasStayOutZones() ? "yes" : "no"));
+                    (capabilities.hasStayOutZones() ? "yes" : "no"));
             properties.put(AutomowerBindingConstants.AUTOMOWER_HAS_WORK_AREAS,
-                    (mower.getAttributes().getCapabilities().hasWorkAreas() ? "yes" : "no"));
+                    (capabilities.hasWorkAreas() ? "yes" : "no"));
 
             updateProperties(properties);
         }
