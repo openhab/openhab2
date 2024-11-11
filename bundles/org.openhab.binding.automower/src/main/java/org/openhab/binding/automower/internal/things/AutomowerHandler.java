@@ -621,6 +621,7 @@ public class AutomowerHandler extends BaseThingHandler {
             settings.setCuttingHeight(cuttingHeight);
             Headlight headlight = new Headlight();
             headlight.setHeadlightMode(headlightMode);
+            settings.setHeadlight(headlight);
 
             // update local cache ...
             mowerState.getAttributes().getSettings().setCuttingHeight(cuttingHeight);
