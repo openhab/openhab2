@@ -155,11 +155,16 @@ public class AutomowerHandler extends BaseThingHandler {
             if (command instanceof StringType cmd) {
                 sendAutomowerSettingsHeadlightMode(cmd.toString());
             }
-        } else if (channelUID.getId().equals(CHANNEL_COMMAND_CONFIRM_ERROR)) {
-            if (command instanceof OnOffType cmd) {
-                if (cmd == OnOffType.ON) {
+        } else if (channelUID.getId().equals(CHANNEL_STATUS_ERROR_CODE)) {
+            if (command instanceof DecimalType cmd) {
+                if (cmd.equals(new DecimalType(0))) {
                     sendAutomowerConfirmError();
-                    updateState(CHANNEL_COMMAND_CONFIRM_ERROR, OnOffType.OFF);
+                }
+            }
+        } else if (channelUID.getId().equals(CHANNEL_STATISTIC_CUTTING_BLADE_USAGE_TIME)) {
+            if (command instanceof DecimalType cmd) {
+                if (cmd.equals(new DecimalType(0))) {
+                    sendAutomowerResetCuttingBladeUsageTime();
                 }
             }
         } else {
@@ -678,6 +683,25 @@ public class AutomowerHandler extends BaseThingHandler {
         }
     }
 
+    /**
+     * Reset the cutting blade usage time
+     */
+    public void sendAutomowerResetCuttingBladeUsageTime() {
+        logger.debug("Sending ResetCuttingBladeUsageTime");
+        String id = automowerId.get();
+        try {
+            AutomowerBridge automowerBridge = getAutomowerBridge();
+            if (automowerBridge != null) {
+                automowerBridge.sendAutomowerResetCuttingBladeUsageTime(id);
+            } else {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "@text/conf-error-no-bridge");
+            }
+        } catch (AutomowerCommunicationException e) {
+            logger.warn("Unable to send ResetCuttingBladeUsageTime to automower: {}, Error: {}", id, e.getMessage());
+        }
+        updateAutomowerState();
+    }
+
     private String restrictedState(RestrictedReason reason) {
         return "RESTRICTED_" + reason.name();
     }
@@ -777,6 +801,8 @@ public class AutomowerHandler extends BaseThingHandler {
 
             updateState(CHANNEL_STATISTIC_CUTTING_BLADE_USAGE_TIME,
                     new QuantityType<>(mower.getAttributes().getStatistics().getCuttingBladeUsageTime(), Units.SECOND));
+            updateState(CHANNEL_STATISTIC_DOWN_TIME,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getDownTime(), Units.SECOND));
             updateState(CHANNEL_STATISTIC_NUMBER_OF_CHARGING_CYCLES,
                     new DecimalType(mower.getAttributes().getStatistics().getNumberOfChargingCycles()));
             updateState(CHANNEL_STATISTIC_NUMBER_OF_COLLISIONS,
@@ -807,6 +833,8 @@ public class AutomowerHandler extends BaseThingHandler {
                 updateState(CHANNEL_STATISTIC_TOTAL_CUTTING_PERCENT, new QuantityType<>(0, Units.PERCENT));
                 updateState(CHANNEL_STATISTIC_TOTAL_SEARCHING_PERCENT, new QuantityType<>(0, Units.PERCENT));
             }
+            updateState(CHANNEL_STATISTIC_UP_TIME,
+                    new QuantityType<>(mower.getAttributes().getStatistics().getUpTime(), Units.SECOND));
 
             if (mower.getAttributes().getLastPosition() != null) {
                 updateState(LAST_POSITION,
