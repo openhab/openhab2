@@ -167,7 +167,7 @@ public class AutomowerHandler extends BaseThingHandler {
                     sendAutomowerResetCuttingBladeUsageTime();
                 }
             } else if (command instanceof QuantityType cmd) {
-                if (cmd.toBigDecimal().intValue() == 0) {
+                if (cmd.intValue() == 0) {
                     sendAutomowerResetCuttingBladeUsageTime();
                 }
             }
@@ -710,6 +710,10 @@ public class AutomowerHandler extends BaseThingHandler {
         return "RESTRICTED_" + reason.name();
     }
 
+    private @Nullable String getErrorMessage(int errorCode) {
+        return ERROR.get(errorCode);
+    }
+
     private @Nullable WorkArea getWorkAreaById(@Nullable Mower mower, long workAreaId) {
         if (mower != null) {
             List<WorkArea> workAreas = mower.getAttributes().getWorkAreas();
@@ -760,7 +764,14 @@ public class AutomowerHandler extends BaseThingHandler {
             updateState(CHANNEL_STATUS_BATTERY,
                     new QuantityType<>(mower.getAttributes().getBattery().getBatteryPercent(), Units.PERCENT));
 
-            updateState(CHANNEL_STATUS_ERROR_CODE, new DecimalType(mower.getAttributes().getMower().getErrorCode()));
+            int errorCode = mower.getAttributes().getMower().getErrorCode();
+            updateState(CHANNEL_STATUS_ERROR_CODE, new DecimalType(errorCode));
+            String errorMessage = getErrorMessage(errorCode);
+            if (errorMessage != null) {
+                updateState(CHANNEL_STATUS_ERROR_MESSAGE, new StringType(errorMessage));
+            } else {
+                updateState(CHANNEL_STATUS_ERROR_MESSAGE, UnDefType.NULL);
+            }
 
             long errorCodeTimestamp = mower.getAttributes().getMower().getErrorCodeTimestamp();
             if (errorCodeTimestamp == 0L) {
