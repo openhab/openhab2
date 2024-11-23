@@ -124,7 +124,7 @@ public class AutomowerHandler extends BaseThingHandler {
             sendAutomowerCalendarTask(command, channelUID.getId());
         } else if (CHANNEL_STAYOUTZONES.contains(channelUID.getId())) {
             String[] channelIDSplit = channelUID.getId().split("-");
-            int index = Integer.parseInt(channelIDSplit[0].substring("zone".length())) - 1;
+            int index = Integer.parseInt(channelIDSplit[0].substring(GROUP_STAYOUTZONE.length())) - 1;
             if ("enabled".equals(channelIDSplit[0])) {
                 if (command instanceof OnOffType cmd) {
                     sendAutomowerStayOutZone(index, ((cmd == OnOffType.ON) ? true : false));
@@ -132,7 +132,7 @@ public class AutomowerHandler extends BaseThingHandler {
             }
         } else if (CHANNEL_WORKAREAS.contains(channelUID.getId())) {
             String[] channelIDSplit = channelUID.getId().split("-");
-            int index = Integer.parseInt(channelIDSplit[0].substring("workarea".length())) - 1;
+            int index = Integer.parseInt(channelIDSplit[0].substring(GROUP_WORKAREA.length())) - 1;
             if ("enabled".equals(channelIDSplit[0])) {
                 if (command instanceof OnOffType cmd) {
                     sendAutomowerWorkAreaEnable(index, ((cmd == OnOffType.ON) ? true : false));
@@ -176,6 +176,8 @@ public class AutomowerHandler extends BaseThingHandler {
                 logger.debug("Sending command '{}'", commandName);
                 getCommandValue(command).ifPresentOrElse(duration -> sendAutomowerCommand(commandName, duration),
                         () -> sendAutomowerCommand(commandName));
+
+                updateState(channelUID, OnOffType.OFF);
             });
         }
     }
@@ -359,7 +361,6 @@ public class AutomowerHandler extends BaseThingHandler {
             boolean[] tuesday, boolean[] wednesday, boolean[] thursday, boolean[] friday, boolean[] saturday,
             boolean[] sunday) {
         if (isValidResult(mowerState)) {
-
             List<CalendarTask> calendarTaskArray = new ArrayList<>();
 
             for (int i = 0; (i < start.length) && (i < duration.length) && (i < monday.length) && (i < tuesday.length)
@@ -787,21 +788,21 @@ public class AutomowerHandler extends BaseThingHandler {
             long nextStartTimestamp = mower.getAttributes().getPlanner().getNextStartTimestamp();
             // If next start timestamp is 0 it means the mower should start now, so using current timestamp
             if (nextStartTimestamp == 0L) {
-                updateState(CHANNEL_PLANNER_NEXT_START, UnDefType.NULL);
+                updateState(CHANNEL_STATUS_NEXT_START, UnDefType.NULL);
             } else {
-                updateState(CHANNEL_PLANNER_NEXT_START,
+                updateState(CHANNEL_STATUS_NEXT_START,
                         new DateTimeType(toZonedDateTime(nextStartTimestamp, mowerZoneId)));
             }
-            updateState(CHANNEL_PLANNER_OVERRIDE_ACTION,
+            updateState(CHANNEL_STATUS_OVERRIDE_ACTION,
                     new StringType(mower.getAttributes().getPlanner().getOverride().getAction().name()));
             RestrictedReason restrictedReason = mower.getAttributes().getPlanner().getRestrictedReason();
             if (restrictedReason != null) {
-                updateState(CHANNEL_PLANNER_RESTRICTED_REASON, new StringType(restrictedReason.name()));
+                updateState(CHANNEL_STATUS_RESTRICTED_REASON, new StringType(restrictedReason.name()));
             } else {
-                updateState(CHANNEL_PLANNER_RESTRICTED_REASON, UnDefType.NULL);
+                updateState(CHANNEL_STATUS_RESTRICTED_REASON, UnDefType.NULL);
             }
 
-            updateState(CHANNEL_PLANNER_EXTERNAL_REASON,
+            updateState(CHANNEL_STATUS_EXTERNAL_REASON,
                     new DecimalType(mower.getAttributes().getPlanner().getExternalReason()));
 
             updateState(CHANNEL_SETTING_CUTTING_HEIGHT,
