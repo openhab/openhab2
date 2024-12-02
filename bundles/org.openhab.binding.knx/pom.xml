@@ -17,6 +17,19 @@
   <properties>
     <bnd.importpackage>javax.microedition.io.*;resolution:="optional",javax.usb.*;resolution:="optional",org.usb4java.*;resolution:="optional"</bnd.importpackage>
   </properties>
+  <repositories>
+    <repository>
+      <id>sonatype.snapshots</id>
+      <name>https://s01.oss.sonatype.org/content/repositories/snapshot</name>
+      <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
 
   <dependencies>
     <dependency>
