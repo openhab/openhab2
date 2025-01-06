@@ -46,6 +46,12 @@
                 <excludes>
                   <exclude>org.lastnpe.eea:eea-all</exclude>
                   <exclude>org.apache.karaf.features:framework</exclude>
+                  <!-- we use OSGI-ified version, so we don't need the following -->
+                  <exclude>org.graalvm.polyglot:polyglot</exclude>
+                  <exclude>org.graalvm.sdk:collections</exclude>
+                  <exclude>org.graalvm.sdk:jniutils</exclude>
+                  <exclude>org.graalvm.sdk:nativeimage</exclude>
+                  <exclude>org.graalvm.sdk:word</exclude>
                 </excludes>
               </artifactSet>
               <createDependencyReducedPom>false</createDependencyReducedPom>
@@ -141,11 +147,7 @@
   </build>
 
   <dependencies>
-    <dependency>
-      <groupId>org.graalvm.polyglot</groupId>
-      <artifactId>polyglot</artifactId>
-      <version>${graaljs.version}</version>
-    </dependency>
+    <!-- org.graalvm.polyglot:polyglot is provided through OSGi bundles -->
     <!-- Graal JavaScript ScriptEngine JSR 223 support -->
     <dependency>
       <groupId>org.graalvm.js</groupId>
