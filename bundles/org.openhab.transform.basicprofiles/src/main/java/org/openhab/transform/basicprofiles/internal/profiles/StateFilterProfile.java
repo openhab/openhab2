@@ -37,6 +37,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.library.items.NumberItem;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.QuantityType;
 import org.openhab.core.library.types.StringType;
@@ -60,6 +61,7 @@ import org.slf4j.LoggerFactory;
  * @author Arne Seime - Initial contribution
  * @author Jimmy Tanagra - Expanded the comparison types
  * @author Jimmy Tanagra - Added support for functions
+ * @author Andrew Fiddian-Green - Normalise calculations based on the Unit of the linked Item
  */
 @NonNullByDefault
 public class StateFilterProfile implements StateProfile {
@@ -108,43 +110,40 @@ public class StateFilterProfile implements StateProfile {
 
     private final int windowSize;
 
+    private @Nullable Unit<?> systemUnit = null; // reference (zero based) system unit for conversions
+    private boolean systemUnitInitialized = false;
+
     public StateFilterProfile(ProfileCallback callback, ProfileContext context, ItemRegistry itemRegistry) {
         this.callback = callback;
         this.itemRegistry = itemRegistry;
 
         StateFilterProfileConfig config = context.getConfiguration().as(StateFilterProfileConfig.class);
-        if (config != null) {
-            conditions = parseConditions(config.conditions, config.separator);
-            int maxWindowSize = 0;
 
-            if (conditions.isEmpty()) {
-                logger.warn("No valid conditions defined for StateFilterProfile. Link: {}. Conditions: {}",
-                        callback.getItemChannelLink(), config.conditions);
-            } else {
-                for (StateCondition condition : conditions) {
-                    if (condition.lhsState instanceof FunctionType function) {
-                        int windowSize = function.getWindowSize();
-                        if (windowSize > maxWindowSize) {
-                            maxWindowSize = windowSize;
-                        }
+        conditions = parseConditions(config.conditions, config.separator);
+        int maxWindowSize = 0;
+
+        if (conditions.isEmpty()) {
+            logger.warn("No valid conditions defined for StateFilterProfile. Link: {}. Conditions: {}",
+                    callback.getItemChannelLink(), config.conditions);
+        } else {
+            for (StateCondition condition : conditions) {
+                if (condition.lhsState instanceof FunctionType function) {
+                    int windowSize = function.getWindowSize();
+                    if (windowSize > maxWindowSize) {
+                        maxWindowSize = windowSize;
                     }
-                    if (condition.rhsState instanceof FunctionType function) {
-                        int windowSize = function.getWindowSize();
-                        if (windowSize > maxWindowSize) {
-                            maxWindowSize = windowSize;
-                        }
+                }
+                if (condition.rhsState instanceof FunctionType function) {
+                    int windowSize = function.getWindowSize();
+                    if (windowSize > maxWindowSize) {
+                        maxWindowSize = windowSize;
                     }
                 }
             }
-
-            windowSize = maxWindowSize;
-
-            configMismatchState = parseState(config.mismatchState, context.getAcceptedDataTypes());
-        } else {
-            conditions = List.of();
-            configMismatchState = null;
-            windowSize = 0;
         }
+
+        windowSize = maxWindowSize;
+        configMismatchState = parseState(config.mismatchState, context.getAcceptedDataTypes());
     }
 
     private List<StateCondition> parseConditions(List<String> conditions, String separator) {
@@ -204,16 +203,21 @@ public class StateFilterProfile implements StateProfile {
 
     @Override
     public void onStateUpdateFromHandler(State state) {
+        if (!isStateAllowed(state)) {
+            logger.debug("Received non allowed state update from handler: {}, ignored", state);
+            return;
+        }
         newState = state;
         State resultState = checkCondition(state);
         if (resultState != null) {
             logger.debug("Received state update from handler: {}, forwarded as {}", state, resultState);
+            acceptedState = resultState;
             callback.sendUpdate(resultState);
         } else {
             logger.debug("Received state update from handler: {}, not forwarded to item", state);
         }
-        if (windowSize > 0 && (state instanceof DecimalType || state instanceof QuantityType)) {
-            previousStates.add(state);
+        if (windowSize > 0 && ((state instanceof DecimalType) || ((state instanceof QuantityType)))) {
+            previousStates.addLast(state);
             if (previousStates.size() > windowSize) {
                 previousStates.removeFirst();
             }
@@ -228,13 +232,7 @@ public class StateFilterProfile implements StateProfile {
                     callback.getItemChannelLink());
             return null;
         }
-
-        if (conditions.stream().allMatch(c -> c.check(state))) {
-            acceptedState = state;
-            return state;
-        } else {
-            return configMismatchState;
-        }
+        return conditions.stream().allMatch(c -> c.check(state)) ? state : configMismatchState;
     }
 
     private @Nullable Item getLinkedItem() {
@@ -316,7 +314,7 @@ public class StateFilterProfile implements StateProfile {
 
         /**
          * Check if the condition is met.
-         * 
+         *
          * If the lhs is empty, the condition is checked against the input state.
          *
          * @param input the state to check against
@@ -334,13 +332,16 @@ public class StateFilterProfile implements StateProfile {
                 State rhsState = this.rhsState;
                 Item lhsItem = null;
                 Item rhsItem = null;
+                boolean isDeltaCheck = false;
 
                 if (rhsState == null) {
                     rhsItem = getItemOrNull(rhsString);
                 } else if (rhsState instanceof FunctionType rhsFunction) {
-                    if (acceptedState == UnDefType.UNDEF && (rhsFunction.getType() == FunctionType.Function.DELTA
-                            || rhsFunction.getType() == FunctionType.Function.DELTA_PERCENT)) {
+                    if (rhsFunction.alwaysAccept()) {
                         return true;
+                    }
+                    if (rhsFunction.getType() == FunctionType.Function.DELTA) {
+                        isDeltaCheck = true;
                     }
                     rhsItem = getLinkedItem();
                 }
@@ -377,8 +378,7 @@ public class StateFilterProfile implements StateProfile {
                 }
 
                 if (lhsState instanceof FunctionType lhsFunction) {
-                    if (acceptedState == UnDefType.UNDEF && (lhsFunction.getType() == FunctionType.Function.DELTA
-                            || lhsFunction.getType() == FunctionType.Function.DELTA_PERCENT)) {
+                    if (lhsFunction.alwaysAccept()) {
                         return true;
                     }
                     lhsItem = getLinkedItem();
@@ -386,6 +386,9 @@ public class StateFilterProfile implements StateProfile {
                     if (lhsState == null) {
                         logger.debug("Couldn't calculate the left hand side function '{}'", lhsString);
                         return false;
+                    }
+                    if (lhsFunction.getType() == FunctionType.Function.DELTA) {
+                        isDeltaCheck = true;
                     }
                 }
 
@@ -432,6 +435,17 @@ public class StateFilterProfile implements StateProfile {
 
                 rhs = Objects.requireNonNull(rhsState instanceof StringType ? rhsState.toString() : rhsState);
 
+                if ((rhs instanceof QuantityType rhsQty) && (lhs instanceof QuantityType lhsQty)) {
+                    if (isDeltaCheck) {
+                        if (rhsQty.toUnitRelative(lhsQty.getUnit()) instanceof QuantityType relativeRhs) {
+                            rhs = relativeRhs;
+                        }
+                    } else if (hasSystemUnit()) {
+                        lhs = systemUnitQuantityType(lhsQty) instanceof QuantityType lhsSU ? lhsSU : lhs;
+                        rhs = systemUnitQuantityType(rhsQty) instanceof QuantityType rhsSU ? rhsSU : rhs;
+                    }
+                }
+
                 if (logger.isDebugEnabled()) {
                     if (lhsString.isEmpty()) {
                         logger.debug("Performing a comparison between input '{}' ({}) and value '{}' ({})", lhs,
@@ -442,6 +456,7 @@ public class StateFilterProfile implements StateProfile {
                     }
                 }
 
+                @SuppressWarnings({ "rawtypes", "unchecked" })
                 boolean result = switch (comparisonType) {
                     case EQ -> lhs.equals(rhs);
                     case NEQ, NEQ_ALT -> !lhs.equals(rhs);
@@ -539,18 +554,42 @@ public class StateFilterProfile implements StateProfile {
 
         public @Nullable State calculate() {
             logger.debug("Calculating function: {}", this);
-            int size = previousStates.size();
-            int start = windowSize.map(w -> size - w).orElse(0);
-            List<State> states = start <= 0 ? previousStates : previousStates.subList(start, size);
             return switch (type) {
                 case DELTA -> calculateDelta();
                 case DELTA_PERCENT -> calculateDeltaPercent();
-                case AVG, AVERAGE -> calculateAverage(states);
-                case MEDIAN -> calculateMedian(states);
-                case STDDEV -> calculateStdDev(states);
-                case MIN -> calculateMin(states);
-                case MAX -> calculateMax(states);
+                default -> {
+                    List<State> states = hasSystemUnit()
+                            ? systemUnitQuantityTypes(previousStates).stream().map(q -> (State) q).toList()
+                            : previousStates;
+                    int size = states.size();
+                    int start = windowSize.map(w -> size - w).orElse(0);
+                    states = start <= 0 ? states : states.subList(start, size);
+                    yield switch (type) {
+                        case AVG, AVERAGE -> calculateAverage(states);
+                        case MEDIAN -> calculateMedian(states);
+                        case STDDEV -> calculateStdDev(states);
+                        case MIN -> calculateMin(states);
+                        case MAX -> calculateMax(states);
+                        default -> null;
+                    };
+                }
             };
+        }
+
+        public boolean alwaysAccept() {
+            if ((type == Function.DELTA || type == Function.DELTA_PERCENT) && acceptedState == UnDefType.UNDEF) {
+                return true;
+            }
+            if (type == Function.DELTA_PERCENT) {
+                // avoid division by zero
+                if (acceptedState instanceof QuantityType base) {
+                    return base.toBigDecimal().compareTo(BigDecimal.ZERO) == 0;
+                }
+                if (acceptedState instanceof DecimalType base) {
+                    return base.toBigDecimal().compareTo(BigDecimal.ZERO) == 0;
+                }
+            }
+            return false;
         }
 
         @Override
@@ -589,15 +628,18 @@ public class StateFilterProfile implements StateProfile {
             return toFullString();
         }
 
+        @SuppressWarnings({ "unchecked", "rawtypes" })
         private @Nullable State calculateAverage(List<State> states) {
             if (states.isEmpty()) {
                 logger.debug("Not enough states to calculate sum");
                 return null;
             }
-            if (newState instanceof QuantityType newStateQuantity) {
-                QuantityType zero = new QuantityType(0, newStateQuantity.getUnit());
-                QuantityType sum = states.stream().map(s -> (QuantityType) s).reduce(zero, QuantityType::add);
-                return sum.divide(BigDecimal.valueOf(states.size()));
+            if (hasSystemUnit()) {
+                List<QuantityType> systemUnitQuantityTypes = systemUnitQuantityTypes(states);
+                return systemUnitQuantityTypes.isEmpty() ? null
+                        : systemUnitQuantityTypes.stream()
+                                .reduce(new QuantityType<>(0, Objects.requireNonNull(systemUnit)), QuantityType::add)
+                                .divide(BigDecimal.valueOf(systemUnitQuantityTypes.size()));
             }
             BigDecimal sum = states.stream().map(s -> ((DecimalType) s).toBigDecimal()).reduce(BigDecimal.ZERO,
                     BigDecimal::add);
@@ -609,36 +651,33 @@ public class StateFilterProfile implements StateProfile {
                 logger.debug("Not enough states to calculate median");
                 return null;
             }
-            if (newState instanceof QuantityType newStateQuantity) {
-                Unit<?> unit = newStateQuantity.getUnit();
-                List<BigDecimal> bdStates = states.stream()
-                        .map(s -> ((QuantityType) s).toInvertibleUnit(unit).toBigDecimal()).toList();
-                return Optional.ofNullable(Statistics.median(bdStates)).map(median -> new QuantityType(median, unit))
-                        .orElse(null);
+            if (hasSystemUnit()) {
+                BigDecimal median = Statistics
+                        .median(systemUnitQuantityTypes(states).stream().map(q -> q.toBigDecimal()).toList());
+                return median == null ? null : new QuantityType<>(median, Objects.requireNonNull(systemUnit));
             }
             List<BigDecimal> bdStates = states.stream().map(s -> ((DecimalType) s).toBigDecimal()).toList();
             return Optional.ofNullable(Statistics.median(bdStates)).map(median -> new DecimalType(median)).orElse(null);
         }
 
+        @SuppressWarnings({ "rawtypes", "unchecked" })
         private @Nullable State calculateStdDev(List<State> states) {
             if (states.isEmpty()) {
                 logger.debug("Not enough states to calculate standard deviation");
                 return null;
             }
-            if (newState instanceof QuantityType newStateQuantity) {
+            if (hasSystemUnit()) {
                 QuantityType average = (QuantityType) calculateAverage(states);
                 if (average == null) {
                     return null;
                 }
-                QuantityType zero = new QuantityType(0, newStateQuantity.getUnit());
-                QuantityType variance = states.stream() //
-                        .map(s -> {
-                            QuantityType delta = ((QuantityType) s).subtract(average);
-                            return (QuantityType) delta.multiply(delta.toBigDecimal()); // don't square the unit
-                        }) //
-                        .reduce(zero, QuantityType::add) // This reduced into a QuantityType
+                QuantityType variance = systemUnitQuantityTypes(states).stream().map(q -> {
+                    QuantityType delta = q.subtract(average);
+                    return delta.multiply(delta.toBigDecimal()); // don't square the unit
+                }) //
+                        .reduce(new QuantityType<>(0, Objects.requireNonNull(systemUnit)), QuantityType::add)
                         .divide(BigDecimal.valueOf(states.size()));
-                return new QuantityType(variance.toBigDecimal().sqrt(MathContext.DECIMAL32), variance.getUnit());
+                return new QuantityType<>(variance.toBigDecimal().sqrt(MathContext.DECIMAL32), variance.getUnit());
             }
             BigDecimal average = Optional.ofNullable((DecimalType) calculateAverage(states))
                     .map(DecimalType::toBigDecimal).orElse(null);
@@ -658,8 +697,10 @@ public class StateFilterProfile implements StateProfile {
                 logger.debug("Not enough states to calculate min");
                 return null;
             }
-            if (newState instanceof QuantityType newStateQuantity) {
-                return states.stream().map(s -> (QuantityType) s).min(QuantityType::compareTo).orElse(null);
+            if (hasSystemUnit()) {
+                @SuppressWarnings({ "rawtypes", "unchecked" })
+                Optional<QuantityType> min = systemUnitQuantityTypes(states).stream().min(QuantityType::compareTo);
+                return min.isPresent() ? min.get() : null;
             }
             return states.stream().map(s -> ((DecimalType) s).toBigDecimal()).min(BigDecimal::compareTo)
                     .map(DecimalType::new).orElse(null);
@@ -670,17 +711,25 @@ public class StateFilterProfile implements StateProfile {
                 logger.debug("Not enough states to calculate max");
                 return null;
             }
-            if (newState instanceof QuantityType newStateQuantity) {
-                return states.stream().map(s -> (QuantityType) s).max(QuantityType::compareTo).orElse(null);
+            if (hasSystemUnit()) {
+                @SuppressWarnings({ "rawtypes", "unchecked" })
+                Optional<QuantityType> max = systemUnitQuantityTypes(states).stream().max(QuantityType::compareTo);
+                return max.isPresent() ? max.get() : null;
             }
             return states.stream().map(s -> ((DecimalType) s).toBigDecimal()).max(BigDecimal::compareTo)
                     .map(DecimalType::new).orElse(null);
         }
 
+        @SuppressWarnings({ "rawtypes", "unchecked" })
         private @Nullable State calculateDelta() {
-            if (newState instanceof QuantityType newStateQuantity) {
-                QuantityType result = newStateQuantity.subtract((QuantityType) acceptedState);
-                return result.toBigDecimal().compareTo(BigDecimal.ZERO) < 0 ? result.negate() : result;
+            if (hasSystemUnit()) {
+                QuantityType systemUnitNewState = systemUnitQuantityType(newState);
+                QuantityType systemUnitAcceptedState = systemUnitQuantityType(acceptedState);
+                if (systemUnitNewState != null && systemUnitAcceptedState != null) {
+                    QuantityType result = systemUnitNewState.subtract(systemUnitAcceptedState);
+                    return result.toBigDecimal().compareTo(BigDecimal.ZERO) < 0 ? result.negate() : result;
+                }
+                return null;
             }
             BigDecimal result = ((DecimalType) newState).toBigDecimal()
                     .subtract(((DecimalType) acceptedState).toBigDecimal()) //
@@ -688,14 +737,22 @@ public class StateFilterProfile implements StateProfile {
             return new DecimalType(result);
         }
 
+        @SuppressWarnings({ "rawtypes" })
         private @Nullable State calculateDeltaPercent() {
             State calculatedDelta = calculateDelta();
+            if (calculatedDelta == null) {
+                return null;
+            }
             BigDecimal bdDelta;
             BigDecimal bdBase;
-            if (acceptedState instanceof QuantityType acceptedStateQuantity) {
-                // Assume that delta and base are in the same unit
-                bdDelta = ((QuantityType) calculatedDelta).toBigDecimal();
-                bdBase = acceptedStateQuantity.toBigDecimal();
+            if (hasSystemUnit()) {
+                QuantityType<?> acceptedStateReferenceQuantity = systemUnitQuantityType(acceptedState);
+                if (acceptedStateReferenceQuantity instanceof QuantityType) {
+                    bdDelta = ((QuantityType) calculatedDelta).toBigDecimal();
+                    bdBase = acceptedStateReferenceQuantity.toBigDecimal();
+                } else {
+                    return null;
+                }
             } else {
                 bdDelta = ((DecimalType) calculatedDelta).toBigDecimal();
                 bdBase = ((DecimalType) acceptedState).toBigDecimal();
@@ -704,5 +761,71 @@ public class StateFilterProfile implements StateProfile {
             BigDecimal percent = bdDelta.multiply(BigDecimal.valueOf(100)).divide(bdBase, 2, RoundingMode.HALF_EVEN);
             return new DecimalType(percent);
         }
+    }
+
+    /**
+     * Initialize the reference zero based system unit of the linked item. If there is no linked item, or it is not a
+     * {@link NumberItem} or if the item does not have a unit, then the systemUnit is null.
+     *
+     * @return the systemUnit or null
+     */
+    protected @Nullable Unit<?> initSystemUnit() {
+        if (systemUnitInitialized) {
+            return systemUnit;
+        }
+        Unit<?> systemUnit = (getLinkedItem() instanceof NumberItem numberItem)
+                && (numberItem.getUnit() instanceof Unit<?> numberItemUnit) ? numberItemUnit.getSystemUnit() : null;
+        this.systemUnit = systemUnit;
+        systemUnitInitialized = true;
+        return systemUnit;
+    }
+
+    /**
+     * Return true if 'systemUnit' is defined.
+     */
+    protected boolean hasSystemUnit() {
+        return initSystemUnit() != null;
+    }
+
+    /**
+     * Convert a {@link State} to a {@link QuantityType} with its value converted to the 'systemUnit'.
+     * Returns null if the state is not a {@link QuantityType} or it does not convert to 'systemUnit'.
+     *
+     * The conversion can be made to both inverted and non-inverted units, so invertible type conversions
+     * (e.g. Mirek <=> Kelvin) are supported.
+     *
+     * @return a {@link QuantityType} based on 'systemUnit'
+     */
+    protected @Nullable QuantityType<?> systemUnitQuantityType(State state) {
+        return (state instanceof QuantityType<?> quantity) && hasSystemUnit()
+                ? quantity.toInvertibleUnit(Objects.requireNonNull(systemUnit))
+                : null;
+    }
+
+    /**
+     * Convert a list of {@link State} to a list of {@link QuantityType} converted to 'systemUnit'. Exclude any
+     * {@link State} that are not a {@link QuantityType}. Convert any remaining {@link QuantityType} to the 'systemUnit'
+     * and exclude any values that did not convert.
+     *
+     * @param states list of {@link State} values
+     * @return list of {@link QuantityType} values
+     */
+    @SuppressWarnings("rawtypes")
+    protected List<QuantityType> systemUnitQuantityTypes(List<State> states) {
+        return !hasSystemUnit() ? List.of()
+                : states.stream().map(s -> systemUnitQuantityType(s)).filter(Objects::nonNull)
+                        .map(s -> (QuantityType) s).toList();
+    }
+
+    /**
+     * Check if the given {@link State} is allowed. Non allowed means that there is a 'systemUnit', the {@link State}
+     * is a {@link QuantityType}, and the value is not compatible with 'systemUnit'.
+     *
+     * @param state the incoming state
+     * @return true if allowed
+     */
+    protected boolean isStateAllowed(State state) {
+        return !(state instanceof QuantityType<?>) || !hasSystemUnit()
+                || Objects.nonNull(systemUnitQuantityType(state));
     }
 }
