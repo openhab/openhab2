@@ -15,13 +15,13 @@ package org.openhab.binding.bluetooth.grundfosalpha.internal.handler;
 import static org.openhab.binding.bluetooth.grundfosalpha.internal.GrundfosAlphaBindingConstants.*;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -30,9 +30,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.bluetooth.BluetoothCharacteristic;
+import org.openhab.binding.bluetooth.BluetoothDevice;
 import org.openhab.binding.bluetooth.BluetoothDevice.ConnectionState;
 import org.openhab.binding.bluetooth.BluetoothService;
 import org.openhab.binding.bluetooth.ConnectedBluetoothHandler;
+import org.openhab.binding.bluetooth.grundfosalpha.internal.CharacteristicRequest;
 import org.openhab.binding.bluetooth.grundfosalpha.internal.protocol.MessageType;
 import org.openhab.binding.bluetooth.grundfosalpha.internal.protocol.ResponseMessage;
 import org.openhab.binding.bluetooth.grundfosalpha.internal.protocol.SensorDataType;
@@ -68,15 +70,15 @@ public class GrundfosAlpha3Handler extends ConnectedBluetoothHandler {
     private static final Set<String> FLOW_HEAD_CHANNELS = Set.of(CHANNEL_FLOW_RATE, CHANNEL_PUMP_HEAD);
     private static final Set<String> POWER_CHANNELS = Set.of(CHANNEL_VOLTAGE_AC, CHANNEL_POWER, CHANNEL_MOTOR_SPEED);
 
-    private static final int REQUEST_DELAY_MS = 100;
     private static final int UPDATE_INTERVAL_SECONDS = 30;
 
     private final Logger logger = LoggerFactory.getLogger(GrundfosAlpha3Handler.class);
     private final Lock stateLock = new ReentrantLock();
+    private final BlockingQueue<CharacteristicRequest> sendQueue = new LinkedBlockingQueue<>();
 
     private @Nullable ScheduledFuture<?> refreshFuture;
+    private @Nullable WriteCharacteristicThread senderThread;
     private ResponseMessage decoder = new ResponseMessage();
-    private Instant lastRequest = Instant.MIN;
     private int sequence;
 
     public GrundfosAlpha3Handler(Thing thing) {
@@ -86,10 +88,18 @@ public class GrundfosAlpha3Handler extends ConnectedBluetoothHandler {
     @Override
     public void initialize() {
         super.initialize();
+
+        WriteCharacteristicThread senderThread = this.senderThread = new WriteCharacteristicThread(device);
+        senderThread.start();
     }
 
     @Override
     public void dispose() {
+        WriteCharacteristicThread senderThread = this.senderThread;
+        if (senderThread != null) {
+            senderThread.interrupt();
+            this.senderThread = null;
+        }
         cancelFuture();
         sendDisconnect();
         super.dispose();
@@ -117,18 +127,10 @@ public class GrundfosAlpha3Handler extends ConnectedBluetoothHandler {
             return;
         }
 
-        if (lastRequest.until(Instant.now(), ChronoUnit.MILLIS) < REQUEST_DELAY_MS) {
-            logger.info("Ignoring command {} because of another recent request", command);
-            return;
-        }
-
-        BluetoothCharacteristic characteristic = device.getCharacteristic(UUID_CHARACTERISTIC_GENI);
-        if (characteristic != null) {
-            if (FLOW_HEAD_CHANNELS.contains(channelUID.getId())) {
-                device.writeCharacteristic(characteristic, MessageType.FlowHead.request());
-            } else if (POWER_CHANNELS.contains(channelUID.getId())) {
-                device.writeCharacteristic(characteristic, MessageType.Power.request());
-            }
+        if (FLOW_HEAD_CHANNELS.contains(channelUID.getId())) {
+            sendQueue.add(new CharacteristicRequest(UUID_CHARACTERISTIC_GENI, MessageType.FlowHead.request()));
+        } else if (POWER_CHANNELS.contains(channelUID.getId())) {
+            sendQueue.add(new CharacteristicRequest(UUID_CHARACTERISTIC_GENI, MessageType.Power.request()));
         }
     }
 
@@ -202,21 +204,12 @@ public class GrundfosAlpha3Handler extends ConnectedBluetoothHandler {
             return;
         }
 
-        BluetoothCharacteristic characteristic = device.getCharacteristic(UUID_CHARACTERISTIC_GENI);
-        if (characteristic != null) {
-            int delay = 0;
-            if (FLOW_HEAD_CHANNELS.stream().anyMatch(this::isLinked)) {
-                device.writeCharacteristic(characteristic, MessageType.FlowHead.request());
-                lastRequest = Instant.now();
-                delay = REQUEST_DELAY_MS;
-            }
+        if (FLOW_HEAD_CHANNELS.stream().anyMatch(this::isLinked)) {
+            sendQueue.add(new CharacteristicRequest(UUID_CHARACTERISTIC_GENI, MessageType.FlowHead.request()));
+        }
 
-            if (POWER_CHANNELS.stream().anyMatch(this::isLinked)) {
-                scheduler.schedule(() -> {
-                    device.writeCharacteristic(characteristic, MessageType.Power.request());
-                    lastRequest = Instant.now();
-                }, delay, TimeUnit.MILLISECONDS);
-            }
+        if (POWER_CHANNELS.stream().anyMatch(this::isLinked)) {
+            sendQueue.add(new CharacteristicRequest(UUID_CHARACTERISTIC_GENI, MessageType.Power.request()));
         }
     }
 
@@ -237,5 +230,52 @@ public class GrundfosAlpha3Handler extends ConnectedBluetoothHandler {
     public void onConnectionStateChange(BluetoothConnectionStatusNotification connectionNotification) {
         super.onConnectionStateChange(connectionNotification);
         logger.debug("{}", connectionNotification.getConnectionState());
+    }
+
+    private class WriteCharacteristicThread extends Thread {
+        private static final int REQUEST_DELAY_MS = 700;
+
+        private final BluetoothDevice device;
+
+        public WriteCharacteristicThread(BluetoothDevice device) {
+            super("OH-binding-" + getThing().getUID() + "-WriteCharacteristicThread");
+            this.device = device;
+        }
+
+        @Override
+        public void run() {
+            logger.debug("Starting sender thread");
+            while (!interrupted()) {
+                try {
+                    processQueue();
+                    Thread.sleep(REQUEST_DELAY_MS);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+            logger.debug("Sender thread finished");
+        }
+
+        private void processQueue() throws InterruptedException {
+            logger.trace("Processing/await queue, size: {}", sendQueue.size());
+            CharacteristicRequest request = sendQueue.take();
+            if (logger.isDebugEnabled()) {
+                logger.debug("Writing characteristic {}: {}", request.getUUID(),
+                        HexUtils.bytesToHex(request.getValue()));
+            }
+            if (request.send(device)) {
+                removeDuplicates(request);
+            }
+        }
+
+        private void removeDuplicates(CharacteristicRequest request) {
+            int duplicates = 0;
+            while (sendQueue.remove(request)) {
+                duplicates++;
+            }
+            if (duplicates > 0 && logger.isDebugEnabled()) {
+                logger.debug("Removed {} duplicate characteristic requests for '{}' from queue", duplicates, request);
+            }
+        }
     }
 }
