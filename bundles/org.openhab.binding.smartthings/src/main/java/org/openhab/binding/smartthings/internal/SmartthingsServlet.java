@@ -159,8 +159,16 @@ public class SmartthingsServlet extends SmartthingsBaseServlet {
                 template = indexTemplate;
             }
 
+            StringBuffer requestUrl = req.getRequestURL();
+            String servletBaseUrl = requestUrl != null ? requestUrl.toString() : "";
+            String servletBaseURLSecure = servletBaseUrl.replace("http://", "https://").replace("8080", "8443");
+            int p1 = servletBaseURLSecure.indexOf(SmartthingsServlet.PATH);
+            if (p1 >= 0) {
+                servletBaseURLSecure = servletBaseURLSecure.substring(0, p1 + SmartthingsServlet.PATH.length());
+            }
+
             if (selectLocationTemplate != null && selectLocationTemplate.equals(template)) {
-                setupApp();
+                setupApp(servletBaseURLSecure);
 
                 try {
                     SmartthingsLocation[] locationList = api.getAllLocations();
@@ -182,14 +190,8 @@ public class SmartthingsServlet extends SmartthingsBaseServlet {
                 replaceMap.put(KEY_APP_ID, installedAppId);
             }
 
-            StringBuffer requestUrl = req.getRequestURL();
-            String servletBaseUrl = requestUrl != null ? requestUrl.toString() : "";
-            String servletBaseURLSecure = servletBaseUrl.replace("http://", "https://").replace("8080", "8443");
-
-            String locationId = "cb73e411-15b4-40e8-b6cd-f9a34f6ced4b";
             String uri = "https://account.smartthings.com/login?redirect=https%3A%2F%2Fstrongman-regional.api.smartthings.com%2F%3FappId%3D";
             uri = uri + bridgeHandler.getAppId();
-            uri = uri + "%26locationId%3D" + locationId;
             uri = uri + "%26appType%3DENDPOINTAPP";
             uri = uri + "%26language%3Den";
             uri = uri + "%26clientOS%3Dweb";
@@ -238,25 +240,28 @@ public class SmartthingsServlet extends SmartthingsBaseServlet {
                     logger.info("");
                     String tokenInstallUpdate = resultObj.installData.authToken;
                     installedAppId = resultObj.installData.installedApp.installedAppId;
+                    String locationId = resultObj.installData.installedApp.locationId;
 
                     try {
-                        SmartthingsLocation loc = api.getLocation(resultObj.installData.installedApp.locationId);
+                        SmartthingsLocation loc = api.getLocation(locationId);
                         installedLocation = loc.name;
                     } catch (SmartthingsException ex) {
                         installedLocation = "Unable to retrieve location!!";
                     }
 
-                    registerSubscriptions(tokenInstallUpdate);
+                    registerSubscriptions(tokenInstallUpdate, locationId);
 
                     setupInProgress = false;
                     logger.info("INSTALL");
                 } else if (resultObj.lifecycle.equals("UPDATE")) {
                     String tokenInstallUpdate = resultObj.updateData.authToken;
                     installedAppId = resultObj.updateData.installedApp.installedAppId;
+                    String locationId = resultObj.installData.installedApp.locationId;
+
                     String subscriptionUri = "https://api.smartthings.com/v1/installedapps/" + installedAppId
                             + "/subscriptions";
 
-                    registerSubscriptions(tokenInstallUpdate);
+                    registerSubscriptions(tokenInstallUpdate, locationId);
 
                     logger.info("UPDATE");
                 } else if (resultObj.lifecycle.equals("EXECUTE")) {
@@ -325,7 +330,7 @@ public class SmartthingsServlet extends SmartthingsBaseServlet {
         logger.trace("Smartthings servlet returning.");
     }
 
-    protected void registerSubscriptions(String tokenInstallUpdate) {
+    protected void registerSubscriptions(String tokenInstallUpdate, String locationId) {
         try {
             String subscriptionUri = "https://api.smartthings.com/v1/installedapps/" + installedAppId
                     + "/subscriptions";
@@ -341,6 +346,10 @@ public class SmartthingsServlet extends SmartthingsBaseServlet {
 
             for (SmartthingsDevice dev : devices) {
                 try {
+                    if (!dev.locationId.equals(locationId)) {
+                        continue;
+                    }
+
                     SMEvent evt = new SMEvent();
                     evt.sourceType = "DEVICE";
                     evt.device = new device(dev.deviceId, "main", true, null);
@@ -357,14 +366,15 @@ public class SmartthingsServlet extends SmartthingsBaseServlet {
         }
     }
 
-    protected void setupApp() {
+    protected void setupApp(String redirectUrl) {
         SmartthingsApi api = bridgeHandler.getSmartthingsApi();
 
         try {
-            AppResponse appResponse = api.setupApp();
+            AppResponse appResponse = api.setupApp(redirectUrl);
             if (appResponse.oauthClientId != null && appResponse.oauthClientSecret != null) {
                 bridgeHandler.updateConfig(appResponse.oauthClientId, appResponse.oauthClientSecret);
             }
+            bridgeHandler.setAppId(appResponse.app.appId);
         } catch (SmartthingsException ex) {
             logger.info("Unable to setup Smartthings app !!");
         }

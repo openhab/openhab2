@@ -47,8 +47,7 @@ import org.slf4j.LoggerFactory;
  * @author Bob Raker - Initial contribution
  */
 @NonNullByDefault
-@Component(service = {
-        ThingHandlerFactory.class }, configurationPid = "binding.smarthings", property = "event.topics=org/openhab/binding/smartthings/state")
+@Component(service = { ThingHandlerFactory.class }, configurationPid = "binding.smarthings")
 public class SmartthingsHandlerFactory extends BaseThingHandlerFactory implements ThingHandlerFactory {
 
     private final Logger logger = LoggerFactory.getLogger(SmartthingsHandlerFactory.class);

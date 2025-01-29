@@ -48,7 +48,7 @@ public class SmartthingsApi {
     private final SmartthingsNetworkConnector networkConnector;
     private final String token;
 
-    private static final String APP_NAME = "openhabnew025";
+    private static final String APP_NAME = "openhabnew0141";
     private Gson gson = new Gson();
     private String baseUrl = "https://api.smartthings.com/v1";
     private String deviceEndPoint = "/devices";
@@ -75,7 +75,7 @@ public class SmartthingsApi {
         return devices;
     }
 
-    public AppResponse setupApp() throws SmartthingsException {
+    public AppResponse setupApp(String redirectUrl) throws SmartthingsException {
         SmartthingsApp[] appList = getAllApps();
 
         Optional<SmartthingsApp> appOptional = Arrays.stream(appList).filter(x -> APP_NAME.equals(x.appName))
@@ -92,7 +92,7 @@ public class SmartthingsApi {
 
             return result;
         } else {
-            AppResponse result = createApp();
+            AppResponse result = createApp(redirectUrl);
             return result;
         }
     }
@@ -186,9 +186,10 @@ public class SmartthingsApi {
         }
     }
 
-    public AppResponse createApp() throws SmartthingsException {
+    public AppResponse createApp(String redirectUrl) throws SmartthingsException {
         try {
             String uri = baseUrl + appEndPoint + "?signatureType=ST_PADLOCK&requireConfirmation=true";
+            redirectUrl = redirectUrl + "/cb";
 
             String appName = APP_NAME;
             AppRequest appRequest = new AppRequest();
@@ -196,7 +197,7 @@ public class SmartthingsApi {
             appRequest.displayName = appName;
             appRequest.description = "Desc " + appName;
             appRequest.appType = "WEBHOOK_SMART_APP";
-            appRequest.webhookSmartApp = new AppRequest.webhookSmartApp("https://redirect.clae.net/openhabdev/");
+            appRequest.webhookSmartApp = new AppRequest.webhookSmartApp(redirectUrl);
             appRequest.classifications = new String[1];
             appRequest.classifications[0] = "AUTOMATION";
 
@@ -204,9 +205,7 @@ public class SmartthingsApi {
             AppResponse appResponse = doRequest(AppResponse.class, uri, body, false);
 
             return appResponse;
-        } catch (
-
-        final Exception e) {
+        } catch (final Exception e) {
             throw new SmartthingsException("SmartthingsApi : Unable to create app", e);
         }
     }

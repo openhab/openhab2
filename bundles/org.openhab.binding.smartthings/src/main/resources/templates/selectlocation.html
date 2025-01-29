@@ -76,11 +76,18 @@ html {
 	<select id="locationId">
 	   ${locationId.Option}
 	</select>
-	
+	 
 	<br/><br/><br/>
 	
 	<div class="button">
-		<a onclick="window.open('${setup.uri}', 'newwindow','width=1000,height=900'); return false;" >Setup smartthings
+		<script>
+			function confirmInstallation() {
+			   var locElm = document.getElementById("locationId");
+			   var fullUri = "${setup.uri}%26locationId%3D" + locElm.value;
+			   subWindow = window.open(fullUri, 'newwindow','width=1000,height=900'); return false;
+			}
+		</script>
+		<a onclick="confirmInstallation(); return false;" >Setup smartthings
 		</a>
     </div>
 
@@ -89,8 +96,10 @@ html {
 	
 	function doPoll(){
 	    $.get('/smartthings/pool.ajax', function(data) {
-	        if (data=='true')
+	        if (data=='true') {
 	            window.location.replace("/smartthings/confirmation.html");
+				subWindow.close();
+			}
 	        setTimeout(doPoll,1000);
 	    });
 	}

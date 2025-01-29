@@ -34,6 +34,12 @@ You will need to get a token before setup the binding.
 
 - Make a copy of this token, and fill it on the openhab Smarthings Cloud Hub device.
 
+- Then, go back to openhab things.
+  Modify the openhab "Smartthings Cloud Hub" things to add the token to the configuration.
+  
+- After this, go to the following URL :
+    http[s]://myopenhab.domain.com/smartthings/ 
+
 **The binding will not work until this part has been completed, do not skip this part of the setup.**
 
 ## openHAB Configuration
