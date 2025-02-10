@@ -4,88 +4,41 @@
 	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
 	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
 
-	<thing-type id="linky">
-		<label>Linky</label>
-		<description>
-			Provides your energy consumption data.
-			In order to receive the data, you must activate your account at
-			https://espace-client-particuliers.enedis.fr/web/espace-particuliers/compteur-linky.
-		</description>
 
-		<channel-groups>
-			<channel-group typeId="daily" id="daily"/>
-			<channel-group typeId="weekly" id="weekly"/>
-			<channel-group typeId="monthly" id="monthly"/>
-			<channel-group typeId="yearly" id="yearly"/>
-		</channel-groups>
+	<channel-type id="tempoValue">
+		<item-type>Number</item-type>
+		<label>Tempo Color Information</label>
+		<description>This status describes the tempo color of a day.</description>
+		<state>
+			<options>
+				<option value="0">Blue</option>
+				<option value="1">White</option>
+				<option value="2">Red</option>
+			</options>
+		</state>
+	</channel-type>
 
-		<config-description>
-			<parameter name="username" type="text" required="true">
-				<label>Username</label>
-				<context>email</context>
-				<description>Your Enedis Username</description>
-			</parameter>
-			<parameter name="password" type="text" required="true">
-				<label>Password</label>
-				<context>password</context>
-				<description>Your Enedis Password</description>
-			</parameter>
-			<parameter name="internalAuthId" type="text" required="true">
-				<label>Auth ID</label>
-				<description>Authentication ID delivered after the captcha (see documentation).</description>
-			</parameter>
-		</config-description>
-	</thing-type>
+	<channel-type id="info" advanced="false">
+		<item-type>String</item-type>
+		<label>Information</label>
+		<description>an information</description>
+		<category>energy</category>
+		<state readOnly="true"></state>
+	</channel-type>
 
-	<channel-group-type id="daily">
-		<label>Daily consumption</label>
-		<channels>
-			<channel id="yesterday" typeId="consumption">
-				<label>Yesterday Consumption</label>
-			</channel>
-			<channel id="power" typeId="power"/>
-			<channel id="timestamp" typeId="timestamp">
-				<label>Peak Timestamp</label>
-				<description>Maximum power usage timestamp</description>
-			</channel>
-		</channels>
-	</channel-group-type>
+	<channel-type id="infoDate">
+		<item-type>DateTime</item-type>
+		<label>Information Date</label>
+		<description>an information of type date</description>
+		<state readOnly="true" pattern="%1$tF"/>
+	</channel-type>
 
-	<channel-group-type id="weekly">
-		<label>Weekly consumption</label>
-		<channels>
-			<channel id="thisWeek" typeId="consumption">
-				<label>This Week Consumption</label>
-			</channel>
-			<channel id="lastWeek" typeId="consumption">
-				<label>Last Week Consumption</label>
-			</channel>
-		</channels>
-	</channel-group-type>
-
-	<channel-group-type id="monthly">
-		<label>Monthly consumption</label>
-		<channels>
-			<channel id="thisMonth" typeId="consumption">
-				<label>This Month Consumption</label>
-			</channel>
-			<channel id="lastMonth" typeId="consumption">
-				<label>Last Month Consumption</label>
-			</channel>
-		</channels>
-	</channel-group-type>
-
-	<channel-group-type id="yearly">
-		<label>Yearly consumption</label>
-		<channels>
-			<channel id="thisYear" typeId="consumption">
-				<label>This Year Consumption</label>
-			</channel>
-			<channel id="lastYear" typeId="consumption">
-				<label>Last Year Consumption</label>
-			</channel>
-		</channels>
-	</channel-group-type>
+	<channel-type id="numericType">
+		<item-type>Number</item-type>
+		<label>Numeric Type Consumption</label>
+		<category>energy</category>
+		<state readOnly="true" pattern="%.0f"/>
+	</channel-type>
 
 	<channel-type id="consumption">
 		<item-type>Number:Energy</item-type>
@@ -107,5 +60,61 @@
 		<label>Timestamp</label>
 		<category>time</category>
 		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="stringType">
+		<item-type>String</item-type>
+		<label>Teleinfo String Type</label>
+		<category>Energy</category>
+		<state pattern="%s" readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="energyType">
+		<item-type>Number:Energy</item-type>
+		<label>Teleinfo Energy Type</label>
+		<category>Energy</category>
+		<state pattern="%d %unit%" readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="currentType">
+		<item-type>Number:ElectricCurrent</item-type>
+		<label>Teleinfo Current Type</label>
+		<category>Energy</category>
+		<state pattern="%d %unit%" readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="potentialType">
+		<item-type>Number:ElectricPotential</item-type>
+		<label>Teleinfo Potential Type</label>
+		<category>Energy</category>
+		<state pattern="%d %unit%" readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="powerType">
+		<item-type>Number:Power</item-type>
+		<label>Teleinfo Power Type</label>
+		<category>Energy</category>
+		<state pattern="%d %unit%" readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="powerFactorType">
+		<item-type>Number:Power</item-type>
+		<label>Teleinfo PowerFactor Type</label>
+		<category>Energy</category>
+		<state pattern="%d %unit%" readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="switchType">
+		<item-type>Switch</item-type>
+		<label>Teleinfo Switch Type</label>
+		<category>Energy</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="dateTimeType">
+		<item-type>DateTime</item-type>
+		<label>Teleinfo DateTime Type</label>
+		<category>Energy</category>
+		<state readOnly="true" pattern="%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS"/>
 	</channel-type>
 </thing:thing-descriptions>
