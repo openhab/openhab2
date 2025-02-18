@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,9 +19,11 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -35,6 +37,7 @@ import org.openhab.binding.insteon.internal.device.LegacyDevice;
 import org.openhab.binding.insteon.internal.device.LegacyDeviceFeature;
 import org.openhab.binding.insteon.internal.device.LegacyDeviceTypeLoader;
 import org.openhab.binding.insteon.internal.device.X10Address;
+import org.openhab.core.config.core.Configuration;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.ChannelUID;
@@ -43,7 +46,6 @@ import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.thing.binding.ThingHandlerCallback;
-import org.openhab.core.thing.binding.builder.ChannelBuilder;
 import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
 import org.openhab.core.util.StringUtils;
@@ -201,17 +203,12 @@ public class InsteonLegacyDeviceHandler extends BaseThingHandler {
                 if (feature != null) {
                     if (!feature.isFeatureGroup()) {
                         if (channelId.equalsIgnoreCase(BROADCAST_ON_OFF)) {
+                            Set<String> broadcastChannels = new HashSet<>();
                             for (Channel channel : thing.getChannels()) {
                                 String id = channel.getUID().getId();
                                 if (id.startsWith(BROADCAST_ON_OFF)) {
                                     channelMap.put(id, channel);
-                                }
-                            }
-
-                            for (Channel channel : getInsteonNetworkHandler().getCachedChannels(thing.getUID())) {
-                                String id = channel.getUID().getId();
-                                if (id.startsWith(BROADCAST_ON_OFF)) {
-                                    channelMap.putIfAbsent(id, createChannel(id, BROADCAST_ON_OFF, callback));
+                                    broadcastChannels.add(id);
                                 }
                             }
 
@@ -223,7 +220,10 @@ public class InsteonLegacyDeviceHandler extends BaseThingHandler {
                                     for (Object value : list) {
                                         if (value instanceof Double doubleValue && doubleValue % 1 == 0) {
                                             String id = BROADCAST_ON_OFF + "#" + doubleValue.intValue();
-                                            channelMap.putIfAbsent(id, createChannel(id, BROADCAST_ON_OFF, callback));
+                                            if (!broadcastChannels.contains(id)) {
+                                                channelMap.put(id, createChannel(id, BROADCAST_ON_OFF, callback));
+                                                broadcastChannels.add(id);
+                                            }
                                         } else {
                                             valid = false;
                                             break;
@@ -314,9 +314,6 @@ public class InsteonLegacyDeviceHandler extends BaseThingHandler {
             DeviceAddress address = getDeviceAddress();
             if (getBridge() != null && address != null) {
                 getInsteonBinding().removeDevice(address);
-
-                getThing().getChannels().stream().map(Channel::getUID).filter(this::isLinked)
-                        .forEach(this::channelUnlinked);
 
                 logger.debug("removed {} address = {}", getThing().getUID().getAsString(), address);
             }
@@ -484,16 +481,21 @@ public class InsteonLegacyDeviceHandler extends BaseThingHandler {
         ChannelUID channelUID = new ChannelUID(getThing().getUID(), channelId);
         ChannelTypeUID channelTypeUID = new ChannelTypeUID(InsteonBindingConstants.BINDING_ID,
                 CHANNEL_TYPE_ID_PREFIX + StringUtils.capitalize(channelTypeId));
-        Channel oldChannel = getInsteonNetworkHandler().pollCachedChannel(channelUID);
+        Configuration channelConfig = getChannelConfig(channelUID);
         Channel channel = getThing().getChannel(channelUID);
         if (channel == null) {
-            if (oldChannel == null) {
-                channel = callback.createChannelBuilder(channelUID, channelTypeUID).build();
-            } else {
-                channel = ChannelBuilder.create(oldChannel).withType(channelTypeUID).build();
-            }
+            channel = callback.createChannelBuilder(channelUID, channelTypeUID).withConfiguration(channelConfig)
+                    .build();
         }
         return channel;
+    }
+
+    private Configuration getChannelConfig(ChannelUID channelUID) {
+        try {
+            return getInsteonNetworkHandler().getChannelConfig(channelUID);
+        } catch (IllegalArgumentException e) {
+            return new Configuration();
+        }
     }
 
     private InsteonLegacyNetworkHandler getInsteonNetworkHandler() {

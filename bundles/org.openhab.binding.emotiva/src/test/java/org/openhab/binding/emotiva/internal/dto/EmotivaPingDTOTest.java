@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -34,9 +34,8 @@ class EmotivaPingDTOTest extends AbstractDTOTestBase {
 
     @Test
     void marshallPlain() {
-        var dto = new EmotivaPingDTO();
+        EmotivaPingDTO dto = new EmotivaPingDTO();
         String xmlAsString = xmlUtils.marshallEmotivaDTO(dto);
-
         assertThat(xmlAsString, containsString("<emotivaPing/>"));
         assertThat(xmlAsString, not(containsString("<property")));
         assertThat(xmlAsString, not(containsString("</emotivaPing>")));
@@ -44,9 +43,8 @@ class EmotivaPingDTOTest extends AbstractDTOTestBase {
 
     @Test
     void marshallWithProtocol() {
-        var dto = new EmotivaPingDTO("3.0");
+        EmotivaPingDTO dto = new EmotivaPingDTO("3.0");
         String xmlAsString = xmlUtils.marshallEmotivaDTO(dto);
-
         assertThat(xmlAsString, containsString("<emotivaPing protocol=\"3.0\"/>"));
         assertThat(xmlAsString, not(containsString("<property")));
         assertThat(xmlAsString, not(containsString("</emotivaPing>")));
@@ -54,16 +52,14 @@ class EmotivaPingDTOTest extends AbstractDTOTestBase {
 
     @Test
     void unmarshallV2() throws JAXBException {
-        var dto = (EmotivaPingDTO) xmlUtils.unmarshallToEmotivaDTO(emotivaPingV2);
-
+        EmotivaPingDTO dto = (EmotivaPingDTO) xmlUtils.unmarshallToEmotivaDTO(emotivaPingV2);
         assertThat(dto, is(notNullValue()));
         assertThat(dto.getProtocol(), is(nullValue()));
     }
 
     @Test
     void unmarshallV3() throws JAXBException {
-        var dto = (EmotivaPingDTO) xmlUtils.unmarshallToEmotivaDTO(emotivaPingV3);
-
+        EmotivaPingDTO dto = (EmotivaPingDTO) xmlUtils.unmarshallToEmotivaDTO(emotivaPingV3);
         assertThat(dto, is(notNullValue()));
         assertThat(dto.getProtocol(), is(notNullValue()));
         assertThat(dto.getProtocol(), is("3.0"));

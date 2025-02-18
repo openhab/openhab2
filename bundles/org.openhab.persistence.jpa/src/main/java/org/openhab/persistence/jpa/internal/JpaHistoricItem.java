@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -57,16 +57,16 @@ import org.slf4j.LoggerFactory;
  */
 @NonNullByDefault
 public class JpaHistoricItem implements HistoricItem {
-    private static final Logger LOGGER = LoggerFactory.getLogger(JpaHistoricItem.class);
+    private static final Logger logger = LoggerFactory.getLogger(JpaHistoricItem.class);
 
     private final String name;
     private final State state;
-    private final Instant instant;
+    private final ZonedDateTime timestamp;
 
-    public JpaHistoricItem(String name, State state, Instant instant) {
+    public JpaHistoricItem(String name, State state, ZonedDateTime timestamp) {
         this.name = name;
         this.state = state;
-        this.instant = instant;
+        this.timestamp = timestamp;
     }
 
     @Override
@@ -76,12 +76,7 @@ public class JpaHistoricItem implements HistoricItem {
 
     @Override
     public ZonedDateTime getTimestamp() {
-        return instant.atZone(ZoneId.systemDefault());
-    }
-
-    @Override
-    public Instant getInstant() {
-        return instant;
+        return timestamp;
     }
 
     @Override
@@ -91,7 +86,7 @@ public class JpaHistoricItem implements HistoricItem {
 
     @Override
     public String toString() {
-        return DateFormat.getDateTimeInstance().format(getTimestamp()) + ": " + name + " -> " + state;
+        return DateFormat.getDateTimeInstance().format(timestamp) + ": " + name + " -> " + state.toString();
     }
 
     /**
@@ -128,7 +123,7 @@ public class JpaHistoricItem implements HistoricItem {
                 // Ensure we return in the item's unit
                 state = value.toUnit(unit);
                 if (state == null) {
-                    LOGGER.warn("Persisted state {} for item {} is incompatible with item's unit {}; ignoring", value,
+                    logger.warn("Persisted state {} for item {} is incompatible with item's unit {}; ignoring", value,
                             item.getName(), unit);
                     return null;
                 }
@@ -142,7 +137,8 @@ public class JpaHistoricItem implements HistoricItem {
         } else if (item instanceof RollershutterItem) {
             state = PercentType.valueOf(pItem.getValue());
         } else if (item instanceof DateTimeItem) {
-            state = new DateTimeType(Instant.ofEpochMilli(Long.parseLong(pItem.getValue())));
+            state = new DateTimeType(ZonedDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(pItem.getValue())),
+                    ZoneId.systemDefault()));
         } else if (item instanceof LocationItem) {
             PointType pType = null;
             String[] comps = pItem.getValue().split(";");
@@ -160,6 +156,6 @@ public class JpaHistoricItem implements HistoricItem {
             state = new StringType(pItem.getValue());
         }
 
-        return new JpaHistoricItem(item.getName(), state, pItem.getInstant());
+        return new JpaHistoricItem(item.getName(), state, pItem.getTimestamp());
     }
 }

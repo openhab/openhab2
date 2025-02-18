@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,6 +21,7 @@ import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Base64;
 import java.util.Date;
 import java.util.stream.Stream;
@@ -118,7 +119,8 @@ class Value2StateConverterTest {
         var instant = Instant.now();
         var converted = instance.convertValue(instant, DateTimeType.class);
         assertThat(converted, instanceOf(DateTimeType.class));
-        assertThat(((DateTimeType) converted).getInstant(), is(instant));
+        assertThat(((DateTimeType) converted).getZonedDateTime(),
+                is(ZonedDateTime.ofInstant(instant, ZoneId.systemDefault()).withFixedOffsetZone()));
     }
 
     @Test
@@ -126,15 +128,16 @@ class Value2StateConverterTest {
         var date = new Date();
         var converted = instance.convertValue(date, DateTimeType.class);
         assertThat(converted, instanceOf(DateTimeType.class));
-        assertThat(((DateTimeType) converted).getInstant(), is(date.toInstant()));
+        assertThat(((DateTimeType) converted).getZonedDateTime(),
+                is(ZonedDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault()).withFixedOffsetZone()));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "2019-10-12T07:20:50.52", "2019-10-12" })
+    @ValueSource(strings = { "2019-10-12T07:20:50.52Z", "2019-10-12" })
     void givenValidStringDateAndDatetimeTargetReturnDatetype(String date) {
         var converted = instance.convertValue(date, DateTimeType.class);
         assertThat(converted, instanceOf(DateTimeType.class));
-        var convertedDateTime = ((DateTimeType) converted).getInstant().atZone(ZoneId.systemDefault());
+        var convertedDateTime = ((DateTimeType) converted).getZonedDateTime();
         assertThat(convertedDateTime.getYear(), is(2019));
         assertThat(convertedDateTime.getMonthValue(), is(10));
         assertThat(convertedDateTime.getDayOfMonth(), is(12));

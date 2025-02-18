@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,7 +16,6 @@ import static org.openhab.binding.hydrawise.internal.HydrawiseBindingConstants.*
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -212,20 +211,20 @@ public class HydrawiseControllerHandler extends BaseThingHandler implements Hydr
                     }
                     break;
                 case CHANNEL_ZONE_SUSPENDUNTIL:
-                    if (!(command instanceof DateTimeType dateTimeCommand)) {
+                    if (!(command instanceof DateTimeType)) {
                         logger.warn("Invalid command type for suspend {}", command.getClass().getName());
                         return;
                     }
                     if (allCommand) {
                         client.suspendAllRelays(controllerId,
-                                dateTimeCommand.getZonedDateTime(ZoneId.systemDefault()).format(DATE_FORMATTER));
+                                ((DateTimeType) command).getZonedDateTime().format(DATE_FORMATTER));
                     } else if (zone != null) {
                         client.suspendRelay(zone.id,
-                                dateTimeCommand.getZonedDateTime(ZoneId.systemDefault()).format(DATE_FORMATTER));
+                                ((DateTimeType) command).getZonedDateTime().format(DATE_FORMATTER));
                     }
                     break;
                 default:
-                    logger.warn("Unknown channelId {}", channelId);
+                    logger.warn("Uknown channelId {}", channelId);
                     return;
             }
             HydrawiseAccountHandler handler = getAccountHandler();

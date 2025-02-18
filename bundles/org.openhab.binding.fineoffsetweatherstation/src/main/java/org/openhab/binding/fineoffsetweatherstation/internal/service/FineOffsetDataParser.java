@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.fineoffsetweatherstation.internal.Utils;
+import org.openhab.binding.fineoffsetweatherstation.internal.domain.ConversionContext;
 import org.openhab.binding.fineoffsetweatherstation.internal.domain.DebugDetails;
 import org.openhab.binding.fineoffsetweatherstation.internal.domain.Measurand;
 import org.openhab.binding.fineoffsetweatherstation.internal.domain.Protocol;
@@ -151,7 +152,7 @@ public class FineOffsetDataParser {
         return new SystemInfo(frequency, date, dst, useWh24);
     }
 
-    List<MeasuredValue> getMeasuredValues(byte[] data, DebugDetails debugDetails) {
+    List<MeasuredValue> getMeasuredValues(byte[] data, ConversionContext context, DebugDetails debugDetails) {
         /*
          * Pos| Length | Description
          * -------------------------------------------------
@@ -175,14 +176,14 @@ public class FineOffsetDataParser {
             idx++; // at index 5 there is an additional Byte being set to 0x04
             debugDetails.addDebugDetails(5, 1, "ELV extra byte");
         }
-        return readMeasuredValues(data, idx, protocol.getParserCustomizationType(), debugDetails);
+        return readMeasuredValues(data, idx, context, protocol.getParserCustomizationType(), debugDetails);
     }
 
-    List<MeasuredValue> getRainData(byte[] data, DebugDetails debugDetails) {
-        return readMeasuredValues(data, 5, Measurand.ParserCustomizationType.RAIN_READING, debugDetails);
+    List<MeasuredValue> getRainData(byte[] data, ConversionContext context, DebugDetails debugDetails) {
+        return readMeasuredValues(data, 5, context, Measurand.ParserCustomizationType.RAIN_READING, debugDetails);
     }
 
-    private List<MeasuredValue> readMeasuredValues(byte[] data, int idx,
+    private List<MeasuredValue> readMeasuredValues(byte[] data, int idx, ConversionContext context,
             Measurand.@Nullable ParserCustomizationType protocol, DebugDetails debugDetails) {
         var size = toUInt16(data, 3);
 
@@ -197,7 +198,7 @@ public class FineOffsetDataParser {
             } else {
                 debugDetails.addDebugDetails(idx - 1, 1, "measurand " + measurand.getDebugString());
             }
-            idx += measurand.extractMeasuredValues(data, idx, protocol, result, debugDetails);
+            idx += measurand.extractMeasuredValues(data, idx, context, protocol, result, debugDetails);
         }
         return result;
     }

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -54,10 +54,9 @@ public class PercentageValue extends Value {
     private final BigDecimal stepPercent;
     private final @Nullable String onValue;
     private final @Nullable String offValue;
-    private final @Nullable String formatOverride;
 
     public PercentageValue(@Nullable BigDecimal min, @Nullable BigDecimal max, @Nullable BigDecimal step,
-            @Nullable String onValue, @Nullable String offValue, @Nullable String formatOverride) {
+            @Nullable String onValue, @Nullable String offValue) {
         super(CoreItemFactory.DIMMER, List.of(DecimalType.class, QuantityType.class, IncreaseDecreaseType.class,
                 OnOffType.class, UpDownType.class, StringType.class));
         this.onValue = onValue;
@@ -70,12 +69,11 @@ public class PercentageValue extends Value {
         this.span = this.max.subtract(this.min);
         this.step = step == null ? BigDecimal.ONE : step;
         this.stepPercent = this.step.multiply(HUNDRED).divide(this.span, MathContext.DECIMAL128);
-        this.formatOverride = formatOverride;
     }
 
     @Override
     public Command parseCommand(Command command) throws IllegalArgumentException {
-        PercentType oldvalue = (state instanceof UnDefType) ? new PercentType() : state.as(PercentType.class);
+        PercentType oldvalue = (state instanceof UnDefType) ? new PercentType() : (PercentType) state;
         // Nothing do to -> We have received a percentage
         if (command instanceof PercentType percent) {
             return percent;
@@ -137,10 +135,7 @@ public class PercentageValue extends Value {
 
     @Override
     public String getMQTTpublishValue(Command command, @Nullable String pattern) {
-        String formatPattern = this.formatOverride;
-        if (formatPattern == null) {
-            formatPattern = pattern;
-        }
+        String formatPattern = pattern;
         if (formatPattern == null) {
             formatPattern = "%s";
         }
@@ -175,7 +170,7 @@ public class PercentageValue extends Value {
 
     @Override
     public StateDescriptionFragmentBuilder createStateDescription(boolean readOnly) {
-        return super.createStateDescription(readOnly).withMaximum(HUNDRED).withMinimum(BigDecimal.ZERO)
-                .withStep(stepPercent).withPattern("%.0f %%");
+        return super.createStateDescription(readOnly).withMaximum(HUNDRED).withMinimum(BigDecimal.ZERO).withStep(step)
+                .withPattern("%.0f %%");
     }
 }

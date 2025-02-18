@@ -13,11 +13,10 @@ All movie player components including the original K-Player series, M Class Play
 It is important to choose the correct thing type to ensure the available channels are correct for the component being used.
 
 The supported thing types are:
-
-- `player` Any KPlayer, M Class [M300, M500, M700] or Cinema One 1st Gen player
-- `cinemaone` Cinema One (2nd Gen)
-- `alto`
-- `strato` Includes Strato, Strato S, Strato C or Strato V
+`player` Any KPlayer, M Class [M300, M500, M700] or Cinema One 1st Gen player
+`cinemaone` Cinema One (2nd Gen)
+`alto`
+`strato` Includes Strato, Strato S, Strato C or Strato V
 
 The binding supports either a TCP/IP connection or direct serial port connection (19200-8-N-1) to the Kaleidescape component.
 
@@ -140,7 +139,7 @@ The following channels are available:
 
 ## Full Example
 
-### `kaleidescape.things` Example
+kaleidescape.things:
 
 ```java
 kaleidescape:strato:myzone1 "Strato Theater Rm" [ host="192.168.1.10", updatePeriod=0, loadHighlightedDetails=true ]
@@ -148,7 +147,7 @@ kaleidescape:player:myzone2 "M500 Living Rm" [ host="192.168.1.11", updatePeriod
 kaleidescape:cinemaone:myzone3 "My Cinema One" [ host="192.168.1.12", updatePeriod=0, loadHighlightedDetails=true, loadAlbumDetails=true ]
 ```
 
-### `kaleidescape.items` Example
+kaleidescape.items:
 
 ```java
 // Virtual switch to send a command, see sitemap and rules below
@@ -236,7 +235,7 @@ String z1_Detail_DiscLocation "Disc Location: [%s]" { channel="kaleidescape:play
 String z1_MovieSearch "Movie Search"
 ```
 
-### `ksecondsformat.js` Example
+ksecondsformat.js:
 
 ```javascript
 (function(timestamp) {
@@ -260,7 +259,7 @@ String z1_MovieSearch "Movie Search"
 })(input)
 ```
 
-### `kaleidescape.sitemap` Example
+kaleidescape.sitemap:
 
 ```perl
 sitemap kaleidescape label="Kaleidescape" {
@@ -350,7 +349,7 @@ sitemap kaleidescape label="Kaleidescape" {
 }
 ```
 
-### `kaleidescape.rules` Example
+kaleidescape.rules:
 
 ```java
 var int lightPercent
@@ -379,7 +378,7 @@ when
 then
     var volEvt = newState.toString()
 
-    // When `volumeBasicEnabled` is true for the Thing, VOLUME_UP, VOLUME_DOWN and TOGGLE_MUTE are received from the iPad and phone apps
+    // When `volumeBasicEnabled` is true for the thing, VOLUME_UP, VOLUME_DOWN and TOGGLE_MUTE are received from the iPad and phone apps
     // VOLUME_UP_PRESS/RELEASE, VOLUME_DOWN_PRESS/RELEASE, TOGGLE_MUTE events will always be received from the IR remote
     // *RELEASE events are not used in this example
 
@@ -459,7 +458,7 @@ then
     }
 end
 
-// The following are no longer required since the Thing configuration will enable automatic loading of metatdata.
+// The following are no longer required since the thing configuration will enable automatic loading of metatdata.
 // However the examples are still valid for advanced use cases where retrieving metadata from an arbitrary content handle is desired.
 
 rule "Load selected item Metadata"

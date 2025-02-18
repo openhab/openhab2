@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -76,8 +76,8 @@ public class JSONSchemaLight extends AbstractRawSchemaLight {
         protected @Nullable Integer transition;
     }
 
-    public JSONSchemaLight(ComponentFactory.ComponentConfiguration builder) {
-        super(builder);
+    public JSONSchemaLight(ComponentFactory.ComponentConfiguration builder, boolean newStyleChannels) {
+        super(builder, newStyleChannels);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class JSONSchemaLight extends AbstractRawSchemaLight {
                     "Brightness", this).commandTopic(DUMMY_TOPIC, true, 1).commandFilter(this::handleCommand)
                     .withAutoUpdatePolicy(autoUpdatePolicy).build();
         } else {
-            onOffChannel = buildChannel(SWITCH_CHANNEL_ID, ComponentChannelType.SWITCH, onOffValue, "On/Off State",
+            onOffChannel = buildChannel(ON_OFF_CHANNEL_ID, ComponentChannelType.SWITCH, onOffValue, "On/Off State",
                     this).commandTopic(DUMMY_TOPIC, true, 1).commandFilter(this::handleCommand)
                     .withAutoUpdatePolicy(autoUpdatePolicy).build();
         }

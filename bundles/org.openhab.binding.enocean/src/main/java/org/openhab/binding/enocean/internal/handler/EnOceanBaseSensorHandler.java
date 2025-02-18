@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,7 +18,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Hashtable;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -88,7 +87,7 @@ public class EnOceanBaseSensorHandler extends EnOceanBaseThingHandler implements
             config.receivingEEPId.forEach(receivingEEP -> {
                 EEPType receivingEEPType = EEPType.getType(receivingEEP);
                 EEPType existingKey = receivingEEPTypes.putIfAbsent(receivingEEPType.getRORG(), receivingEEPType);
-                if (!Objects.isNull(existingKey)) {
+                if (existingKey != null) {
                     throw new IllegalArgumentException("Receiving more than one EEP of the same RORG is not supported");
                 }
             });
@@ -156,7 +155,7 @@ public class EnOceanBaseSensorHandler extends EnOceanBaseThingHandler implements
         ERP1Message msg = (ERP1Message) packet;
 
         EEPType localReceivingType = receivingEEPTypes.get(msg.getRORG());
-        if (Objects.isNull(localReceivingType)) {
+        if (localReceivingType == null) {
             return;
         }
 

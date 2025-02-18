@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,6 +18,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Set;
 
@@ -599,12 +601,18 @@ public abstract class MessageHandler extends BaseFeatureHandler {
 
         @Override
         public void handleMessage(byte cmd1, Msg msg) {
-            Instant timestamp = Instant.ofEpochMilli(msg.getTimestamp());
-            Instant lastTimestamp = feature.getState() instanceof DateTimeType datetime ? datetime.getInstant() : null;
-            // update state if not defined or is older than message timestamp
-            if (lastTimestamp == null || lastTimestamp.isBefore(timestamp)) {
+            Instant instant = Instant.ofEpochMilli(msg.getTimestamp());
+            ZonedDateTime timestamp = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
+            ZonedDateTime lastTimestamp = getLastTimestamp();
+            // set last time if not defined yet or message timestamp is greater than last value
+            if (lastTimestamp == null || timestamp.compareTo(lastTimestamp) > 0) {
                 feature.updateState(new DateTimeType(timestamp));
             }
+        }
+
+        private @Nullable ZonedDateTime getLastTimestamp() {
+            State state = feature.getState();
+            return state instanceof DateTimeType datetime ? datetime.getZonedDateTime() : null;
         }
     }
 
@@ -1715,20 +1723,6 @@ public abstract class MessageHandler extends BaseFeatureHandler {
         protected State getBitState(boolean is24Hr) {
             ThermostatTimeFormat format = ThermostatTimeFormat.from(is24Hr);
             return new StringType(format.toString());
-        }
-    }
-
-    /**
-     * Thermostat status reporting reply message handler
-     */
-    public static class ThermostatStatusReportingReplyHandler extends MessageHandler {
-        ThermostatStatusReportingReplyHandler(DeviceFeature feature) {
-            super(feature);
-        }
-
-        @Override
-        public void handleMessage(byte cmd1, Msg msg) {
-            logger.debug("{}: thermostat status reporting enabled on {}", nm(), getInsteonDevice().getAddress());
         }
     }
 

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -70,8 +70,8 @@ public class TemplateSchemaLight extends AbstractRawSchemaLight {
         public static final String EFFECT = "effect";
     }
 
-    public TemplateSchemaLight(ComponentFactory.ComponentConfiguration builder) {
-        super(builder);
+    public TemplateSchemaLight(ComponentFactory.ComponentConfiguration builder, boolean newStyleChannels) {
+        super(builder, newStyleChannels);
         transformation = new HomeAssistantChannelTransformation(getJinjava(), this, "");
     }
 
@@ -84,7 +84,7 @@ public class TemplateSchemaLight extends AbstractRawSchemaLight {
         }
 
         onOffValue = new OnOffValue("on", "off");
-        brightnessValue = new PercentageValue(null, new BigDecimal(255), null, null, null, FORMAT_INTEGER);
+        brightnessValue = new PercentageValue(null, new BigDecimal(255), null, null, null);
 
         if (channelConfiguration.redTemplate != null && channelConfiguration.greenTemplate != null
                 && channelConfiguration.blueTemplate != null) {
@@ -96,7 +96,7 @@ public class TemplateSchemaLight extends AbstractRawSchemaLight {
                     "Brightness", this).commandTopic(DUMMY_TOPIC, true, 1)
                     .commandFilter(command -> handleCommand(command)).withAutoUpdatePolicy(autoUpdatePolicy).build();
         } else {
-            onOffChannel = buildChannel(SWITCH_CHANNEL_ID, ComponentChannelType.SWITCH, onOffValue, "On/Off State",
+            onOffChannel = buildChannel(ON_OFF_CHANNEL_ID, ComponentChannelType.SWITCH, onOffValue, "On/Off State",
                     this).commandTopic(DUMMY_TOPIC, true, 1).commandFilter(command -> handleCommand(command))
                     .withAutoUpdatePolicy(autoUpdatePolicy).build();
         }

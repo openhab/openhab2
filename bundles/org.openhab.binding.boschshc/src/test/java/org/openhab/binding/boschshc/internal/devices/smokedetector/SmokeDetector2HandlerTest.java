@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verify;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.junit.jupiter.api.Test;
+import org.openhab.binding.boschshc.internal.devices.AbstractSmokeDetectorHandlerTest;
 import org.openhab.binding.boschshc.internal.devices.BoschSHCBindingConstants;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.thing.ChannelUID;
@@ -31,7 +32,7 @@ import com.google.gson.JsonParser;
  *
  */
 @NonNullByDefault
-class SmokeDetector2HandlerTest extends AbstractSmokeDetectorHandlerWithAlarmServiceTest<SmokeDetector2Handler> {
+public class SmokeDetector2HandlerTest extends AbstractSmokeDetectorHandlerTest<SmokeDetector2Handler> {
 
     @Override
     protected SmokeDetector2Handler createFixture() {

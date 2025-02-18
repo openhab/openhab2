@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -67,14 +67,14 @@ public abstract class AbstractAreaHandler extends AbstractOmnilinkStatusHandler<
 
         super.initialize();
         if (bridgeHandler != null) {
-            updateAreaProperties();
+            updateAreaProperties(bridgeHandler);
         } else {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR,
                     "Received null bridge while initializing Area!");
         }
     }
 
-    private void updateAreaProperties() {
+    private void updateAreaProperties(OmnilinkBridgeHandler bridgeHandler) {
         final List<AreaProperties> areas = getAreaProperties();
         if (areas != null) {
             for (AreaProperties areaProperties : areas) {
@@ -99,10 +99,13 @@ public abstract class AbstractAreaHandler extends AbstractOmnilinkStatusHandler<
             return;
         }
 
-        if (channelUID.getId().equals(CHANNEL_AREA_ACTIVATE_KEYPAD_EMERGENCY)) {
-            handleKeypadEmergency(command);
-        } else {
-            handleSecurityMode(channelUID, command);
+        switch (channelUID.getId()) {
+            case CHANNEL_AREA_ACTIVATE_KEYPAD_EMERGENCY:
+                handleKeypadEmergency(channelUID, command);
+                break;
+            default:
+                handleSecurityMode(channelUID, command);
+                break;
         }
     }
 
@@ -173,7 +176,7 @@ public abstract class AbstractAreaHandler extends AbstractOmnilinkStatusHandler<
      */
     protected abstract EnumSet<AreaAlarm> getAlarms();
 
-    private void handleKeypadEmergency(Command command) {
+    private void handleKeypadEmergency(ChannelUID channelUID, Command command) {
         if (command instanceof DecimalType decimalCommand) {
             try {
                 final OmnilinkBridgeHandler bridge = getOmnilinkBridgeHandler();

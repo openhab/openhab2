@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,6 @@
  */
 package org.openhab.binding.netatmo.internal.handler;
 
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -21,7 +20,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.netatmo.internal.handler.capability.CapabilityMap;
-import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
@@ -45,12 +43,10 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class ModuleHandler extends BaseThingHandler implements CommonInterface {
     private final Logger logger = LoggerFactory.getLogger(ModuleHandler.class);
-    private final CapabilityMap capabilities = new CapabilityMap();
-    private final TimeZoneProvider timeZoneProvider;
+    private CapabilityMap capabilities = new CapabilityMap();
 
-    public ModuleHandler(Thing thing, TimeZoneProvider timeZoneProvider) {
+    public ModuleHandler(Thing thing) {
         super(thing);
-        this.timeZoneProvider = timeZoneProvider;
     }
 
     @Override
@@ -113,8 +109,8 @@ public class ModuleHandler extends BaseThingHandler implements CommonInterface {
     }
 
     @Override
-    public void triggerChannel(String groupID, String channelID, String event) {
-        super.triggerChannel(new ChannelUID(this.getThing().getUID(), groupID, channelID), event);
+    public void triggerChannel(String channelID, String event) {
+        super.triggerChannel(channelID, event);
     }
 
     @Override
@@ -132,10 +128,5 @@ public class ModuleHandler extends BaseThingHandler implements CommonInterface {
     @Override
     public ScheduledExecutorService getScheduler() {
         return scheduler;
-    }
-
-    @Override
-    public ZoneId getSystemTimeZone() {
-        return timeZoneProvider.getTimeZone();
     }
 }

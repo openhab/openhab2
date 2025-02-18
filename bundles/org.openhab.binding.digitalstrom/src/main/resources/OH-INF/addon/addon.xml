@@ -4,9 +4,8 @@
 	xsi:schemaLocation="https://openhab.org/schemas/addon/v1.0.0 https://openhab.org/schemas/addon-1.0.0.xsd">
 
 	<type>binding</type>
-	<name>digitalSTROM-Binding</name>
-	<description>The digitalSTROM-Binding integrates the digitalSTROM-System and allows to control the included devices and
-		call scenes.</description>
+	<name>@text/binding_name</name>
+	<description>@text/binding_desc</description>
 	<connection>local</connection>
 
 	<discovery-methods>

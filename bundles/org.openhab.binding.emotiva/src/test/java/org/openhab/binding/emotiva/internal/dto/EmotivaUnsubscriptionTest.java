@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -37,10 +37,9 @@ class EmotivaUnsubscriptionTest extends AbstractDTOTestBase {
 
     @Test
     void marshalFromChannelUID() {
-        var subscriptionChannel = EmotivaSubscriptionTags.fromChannelUID(CHANNEL_TUNER_RDS);
-        var emotivaSubscriptionRequest = new EmotivaUnsubscribeDTO(subscriptionChannel);
+        EmotivaSubscriptionTags subscriptionChannel = EmotivaSubscriptionTags.fromChannelUID(CHANNEL_TUNER_RDS);
+        EmotivaUnsubscribeDTO emotivaSubscriptionRequest = new EmotivaUnsubscribeDTO(subscriptionChannel);
         String xmlString = xmlUtils.marshallJAXBElementObjects(emotivaSubscriptionRequest);
-
         assertThat(xmlString, containsString("<emotivaUnsubscribe>"));
         assertThat(xmlString, containsString("<tuner_RDS />"));
         assertThat(xmlString, containsString("</emotivaUnsubscribe>"));
@@ -48,10 +47,11 @@ class EmotivaUnsubscriptionTest extends AbstractDTOTestBase {
 
     @Test
     void marshallWithTwoUnsubscriptions() {
-        var command1 = new EmotivaCommandDTO(EmotivaControlCommands.volume);
-        var dto = new EmotivaUnsubscribeDTO(command1);
-        String xmlString = xmlUtils.marshallJAXBElementObjects(dto);
+        EmotivaCommandDTO command1 = new EmotivaCommandDTO(EmotivaControlCommands.volume);
 
+        EmotivaUnsubscribeDTO dto = new EmotivaUnsubscribeDTO(command1);
+
+        String xmlString = xmlUtils.marshallJAXBElementObjects(dto);
         assertThat(xmlString, containsString("<emotivaUnsubscribe>"));
         assertThat(xmlString, containsString("<volume />"));
         assertThat(xmlString, containsString("</emotivaUnsubscribe>"));

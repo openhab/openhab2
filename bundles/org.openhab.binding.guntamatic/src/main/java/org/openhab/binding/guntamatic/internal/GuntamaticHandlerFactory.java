@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -45,13 +45,13 @@ public class GuntamaticHandlerFactory extends BaseThingHandlerFactory {
             THING_TYPE_GENERIC);
 
     private final HttpClient httpClient;
-    private GuntamaticDynamicTypeProvider dynamicTypeProvider;
+    private GuntamaticChannelTypeProvider guntamaticChannelTypeProvider;
 
     @Activate
     public GuntamaticHandlerFactory(@Reference HttpClientFactory httpClientFactory,
-            @Reference GuntamaticDynamicTypeProvider dynamicTypeProvider) {
+            @Reference GuntamaticChannelTypeProvider guntamaticChannelTypeProvider) {
         this.httpClient = httpClientFactory.getCommonHttpClient();
-        this.dynamicTypeProvider = dynamicTypeProvider;
+        this.guntamaticChannelTypeProvider = guntamaticChannelTypeProvider;
     }
 
     @Override
@@ -73,7 +73,7 @@ public class GuntamaticHandlerFactory extends BaseThingHandlerFactory {
         }
 
         if (supportsThingType(thingTypeUID)) {
-            return new GuntamaticHandler(thing, httpClient, dynamicTypeProvider, staticChannelIDs);
+            return new GuntamaticHandler(thing, httpClient, guntamaticChannelTypeProvider, staticChannelIDs);
         }
 
         return null;

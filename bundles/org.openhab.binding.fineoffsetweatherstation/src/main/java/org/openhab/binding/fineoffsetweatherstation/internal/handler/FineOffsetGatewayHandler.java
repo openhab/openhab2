@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -32,12 +32,14 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.fineoffsetweatherstation.internal.FineOffsetGatewayConfiguration;
 import org.openhab.binding.fineoffsetweatherstation.internal.FineOffsetSensorConfiguration;
 import org.openhab.binding.fineoffsetweatherstation.internal.discovery.FineOffsetGatewayDiscoveryService;
+import org.openhab.binding.fineoffsetweatherstation.internal.domain.ConversionContext;
 import org.openhab.binding.fineoffsetweatherstation.internal.domain.SensorGatewayBinding;
 import org.openhab.binding.fineoffsetweatherstation.internal.domain.response.MeasuredValue;
 import org.openhab.binding.fineoffsetweatherstation.internal.domain.response.SensorDevice;
 import org.openhab.binding.fineoffsetweatherstation.internal.domain.response.SystemInfo;
 import org.openhab.binding.fineoffsetweatherstation.internal.service.GatewayQueryService;
 import org.openhab.core.i18n.LocaleProvider;
+import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.i18n.TranslationProvider;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.Channel;
@@ -74,6 +76,7 @@ public class FineOffsetGatewayHandler extends BaseBridgeHandler {
 
     private final Logger logger = LoggerFactory.getLogger(FineOffsetGatewayHandler.class);
     private final Bundle bundle;
+    private final ConversionContext conversionContext;
 
     private @Nullable GatewayQueryService gatewayQueryService;
 
@@ -91,7 +94,7 @@ public class FineOffsetGatewayHandler extends BaseBridgeHandler {
 
     public FineOffsetGatewayHandler(Bridge bridge, FineOffsetGatewayDiscoveryService gatewayDiscoveryService,
             ChannelTypeRegistry channelTypeRegistry, TranslationProvider translationProvider,
-            LocaleProvider localeProvider) {
+            LocaleProvider localeProvider, TimeZoneProvider timeZoneProvider) {
         super(bridge);
         this.bridgeUID = bridge.getUID();
         this.gatewayDiscoveryService = gatewayDiscoveryService;
@@ -99,6 +102,7 @@ public class FineOffsetGatewayHandler extends BaseBridgeHandler {
         this.translationProvider = translationProvider;
         this.localeProvider = localeProvider;
         this.bundle = FrameworkUtil.getBundle(FineOffsetGatewayDiscoveryService.class);
+        this.conversionContext = new ConversionContext(timeZoneProvider.getTimeZone());
     }
 
     @Override
@@ -108,7 +112,7 @@ public class FineOffsetGatewayHandler extends BaseBridgeHandler {
     @Override
     public void initialize() {
         FineOffsetGatewayConfiguration config = getConfigAs(FineOffsetGatewayConfiguration.class);
-        gatewayQueryService = config.protocol.getGatewayQueryService(config, this::updateStatus);
+        gatewayQueryService = config.protocol.getGatewayQueryService(config, this::updateStatus, conversionContext);
 
         updateStatus(ThingStatus.UNKNOWN);
         fetchAndUpdateSensors();

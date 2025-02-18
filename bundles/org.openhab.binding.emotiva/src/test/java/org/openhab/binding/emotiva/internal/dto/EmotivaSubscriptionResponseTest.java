@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -42,7 +42,6 @@ class EmotivaSubscriptionResponseTest extends AbstractDTOTestBase {
     void marshallNoProperty() {
         var dto = new EmotivaSubscriptionResponse(Collections.emptyList());
         String xmlString = xmlUtils.marshallEmotivaDTO(dto);
-
         assertThat(xmlString, containsString("<emotivaSubscription/>"));
         assertThat(xmlString, not(containsString("</emotivaSubscription>")));
         assertThat(xmlString, not(containsString("<property")));
@@ -52,10 +51,9 @@ class EmotivaSubscriptionResponseTest extends AbstractDTOTestBase {
 
     @Test
     void marshallWithOneProperty() {
-        var emotivaPropertyDTO = new EmotivaPropertyDTO(power_on.name(), "On", "true");
+        EmotivaPropertyDTO emotivaPropertyDTO = new EmotivaPropertyDTO(power_on.name(), "On", "true");
         var dto = new EmotivaSubscriptionResponse(Collections.singletonList(emotivaPropertyDTO));
         String xmlString = xmlUtils.marshallEmotivaDTO(dto);
-
         assertThat(xmlString, containsString("<emotivaSubscription>"));
         assertThat(xmlString, containsString("<property name=\"power_on\" value=\"On\" visible=\"true\"/>"));
         assertThat(xmlString, not(containsString("<property>")));
@@ -66,12 +64,9 @@ class EmotivaSubscriptionResponseTest extends AbstractDTOTestBase {
     @Test
     void unmarshall() throws JAXBException {
         var dto = (EmotivaSubscriptionResponse) xmlUtils.unmarshallToEmotivaDTO(emotivaSubscriptionResponse);
-
         assertThat(dto.tags, is(notNullValue()));
         assertThat(dto.tags.size(), is(5));
-
         List<EmotivaNotifyDTO> commands = xmlUtils.unmarshallToNotification(dto.getTags());
-
         assertThat(commands, is(notNullValue()));
         assertThat(commands.size(), is(dto.tags.size()));
         assertThat(commands.get(0), instanceOf(EmotivaNotifyDTO.class));

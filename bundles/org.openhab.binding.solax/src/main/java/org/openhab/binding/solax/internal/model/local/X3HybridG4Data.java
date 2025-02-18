@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,7 +14,6 @@ package org.openhab.binding.solax.internal.model.local;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.binding.solax.internal.connectivity.rawdata.local.LocalConnectRawDataBean;
-import org.openhab.binding.solax.internal.util.ByteUtil;
 
 /**
  * The {@link X3HybridG4Data} is an implementation of the single phased inverter data interface for X3 Hybrid G4
@@ -130,7 +129,7 @@ public class X3HybridG4Data extends CommonLocalDeviceData {
 
     @Override
     public double getBatteryVoltage() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(169), getFromRawData(170))) / 100;
+        return ((double) getFromRawData(39)) / 100;
     }
 
     @Override
@@ -156,8 +155,8 @@ public class X3HybridG4Data extends CommonLocalDeviceData {
     // Feed in power
 
     @Override
-    public int getFeedInPower() {
-        return ByteUtil.read32BitSigned(getFromRawData(34), getFromRawData(35));
+    public short getFeedInPower() {
+        return (short) (getFromRawData(34) - getFromRawData(35));
     }
 
     // Totals
@@ -169,47 +168,47 @@ public class X3HybridG4Data extends CommonLocalDeviceData {
 
     @Override
     public double getTotalEnergy() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(68), getFromRawData(69))) / 10;
+        return ((double) getFromRawData(68)) / 10;
     }
 
     @Override
-    public double getTotalBatteryDischargeEnergy() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(74), getFromRawData(75))) / 10;
+    public short getTotalBatteryDischargeEnergy() {
+        return getFromRawData(74);
     }
 
     @Override
-    public double getTotalBatteryChargeEnergy() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(76), getFromRawData(77))) / 10;
+    public short getTotalBatteryChargeEnergy() {
+        return getFromRawData(76);
     }
 
     @Override
     public double getTotalPVEnergy() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(80), getFromRawData(81))) / 10;
+        return ((double) getFromRawData(80)) / 10;
     }
 
     @Override
-    public double getTotalFeedInEnergy() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(86), getFromRawData(87))) / 100;
+    public short getTotalFeedInEnergy() {
+        return getFromRawData(86);
     }
 
     @Override
     public double getTotalConsumption() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(88), getFromRawData(89))) / 100;
+        return ((double) getFromRawData(88)) / 10;
     }
 
     @Override
     public double getTodayEnergy() {
-        return ((double) getFromRawData(70)) / 10;
+        return ((double) getFromRawData(82)) / 10;
     }
 
     @Override
     public double getTodayFeedInEnergy() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(90), getFromRawData(91))) / 100;
+        return ((double) getFromRawData(90)) / 100;
     }
 
     @Override
     public double getTodayConsumption() {
-        return ((double) ByteUtil.read32BitSigned(getFromRawData(92), getFromRawData(93))) / 100;
+        return ((double) getFromRawData(92)) / 100;
     }
 
     @Override

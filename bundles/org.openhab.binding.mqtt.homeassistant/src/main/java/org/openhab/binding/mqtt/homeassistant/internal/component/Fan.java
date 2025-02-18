@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -43,14 +43,11 @@ import com.google.gson.annotations.SerializedName;
  */
 @NonNullByDefault
 public class Fan extends AbstractComponent<Fan.ChannelConfiguration> implements ChannelStateUpdateListener {
-    public static final String SWITCH_CHANNEL_ID = "switch";
+    public static final String SWITCH_CHANNEL_ID = "fan";
     public static final String SPEED_CHANNEL_ID = "speed";
-    public static final String PRESET_MODE_CHANNEL_ID = "preset-mode";
+    public static final String PRESET_MODE_CHANNEL_ID = "preset_mode";
     public static final String OSCILLATION_CHANNEL_ID = "oscillation";
     public static final String DIRECTION_CHANNEL_ID = "direction";
-
-    private static final BigDecimal BIG_DECIMAL_HUNDRED = new BigDecimal(100);
-    private static final String FORMAT_INTEGER = "%.0f";
 
     /**
      * Configuration class for MQTT component
@@ -62,8 +59,6 @@ public class Fan extends AbstractComponent<Fan.ChannelConfiguration> implements 
 
         protected @Nullable Boolean optimistic;
 
-        @SerializedName("state_value_template")
-        protected @Nullable String stateValueTemplate;
         @SerializedName("state_topic")
         protected @Nullable String stateTopic;
         @SerializedName("command_template")
@@ -130,8 +125,8 @@ public class Fan extends AbstractComponent<Fan.ChannelConfiguration> implements 
     private final ComponentChannel primaryChannel;
     private final ChannelStateUpdateListener channelStateUpdateListener;
 
-    public Fan(ComponentFactory.ComponentConfiguration componentConfiguration) {
-        super(componentConfiguration, ChannelConfiguration.class);
+    public Fan(ComponentFactory.ComponentConfiguration componentConfiguration, boolean newStyleChannels) {
+        super(componentConfiguration, ChannelConfiguration.class, newStyleChannels);
         this.channelStateUpdateListener = componentConfiguration.getUpdateListener();
 
         onOffValue = new OnOffValue(channelConfiguration.payloadOn, channelConfiguration.payloadOff);
@@ -140,7 +135,7 @@ public class Fan extends AbstractComponent<Fan.ChannelConfiguration> implements 
                 : this;
         onOffChannel = buildChannel(SWITCH_CHANNEL_ID, ComponentChannelType.SWITCH, onOffValue, "On/Off State",
                 onOffListener)
-                .stateTopic(channelConfiguration.stateTopic, channelConfiguration.stateValueTemplate)
+                .stateTopic(channelConfiguration.stateTopic, channelConfiguration.getValueTemplate())
                 .commandTopic(channelConfiguration.commandTopic, channelConfiguration.isRetain(),
                         channelConfiguration.getQos(), channelConfiguration.commandTemplate)
                 .inferOptimistic(channelConfiguration.optimistic)
@@ -148,9 +143,10 @@ public class Fan extends AbstractComponent<Fan.ChannelConfiguration> implements 
 
         rawSpeedState = UnDefType.NULL;
 
-        speedValue = new PercentageValue(BigDecimal.valueOf(channelConfiguration.speedRangeMin - 1),
-                BigDecimal.valueOf(channelConfiguration.speedRangeMax), null, channelConfiguration.payloadOn,
-                channelConfiguration.payloadOff, FORMAT_INTEGER);
+        int speeds = Math.min(channelConfiguration.speedRangeMax, 100) - Math.max(channelConfiguration.speedRangeMin, 1)
+                + 1;
+        speedValue = new PercentageValue(BigDecimal.ZERO, BigDecimal.valueOf(100), BigDecimal.valueOf(100.0d / speeds),
+                channelConfiguration.payloadOn, channelConfiguration.payloadOff);
 
         if (channelConfiguration.percentageCommandTopic != null) {
             hiddenChannels.add(onOffChannel);
@@ -199,7 +195,6 @@ public class Fan extends AbstractComponent<Fan.ChannelConfiguration> implements 
                             channelConfiguration.getQos(), channelConfiguration.directionCommandTemplate)
                     .inferOptimistic(channelConfiguration.optimistic).build();
         }
-
         finalizeChannels();
     }
 

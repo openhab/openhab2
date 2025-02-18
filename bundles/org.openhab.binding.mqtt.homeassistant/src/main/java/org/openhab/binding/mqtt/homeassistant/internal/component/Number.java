@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -62,10 +62,15 @@ public class Number extends AbstractComponent<Number.ChannelConfiguration> {
         protected String payloadReset = "None";
 
         protected String mode = "auto";
+
+        @SerializedName("json_attributes_topic")
+        protected @Nullable String jsonAttributesTopic;
+        @SerializedName("json_attributes_template")
+        protected @Nullable String jsonAttributesTemplate;
     }
 
-    public Number(ComponentFactory.ComponentConfiguration componentConfiguration) {
-        super(componentConfiguration, ChannelConfiguration.class);
+    public Number(ComponentFactory.ComponentConfiguration componentConfiguration, boolean newStyleChannels) {
+        super(componentConfiguration, ChannelConfiguration.class, newStyleChannels);
 
         NumberValue value = new NumberValue(channelConfiguration.min, channelConfiguration.max,
                 channelConfiguration.step, UnitUtils.parseUnit(channelConfiguration.unitOfMeasurement));
@@ -76,7 +81,6 @@ public class Number extends AbstractComponent<Number.ChannelConfiguration> {
                 .commandTopic(channelConfiguration.commandTopic, channelConfiguration.isRetain(),
                         channelConfiguration.getQos(), channelConfiguration.commandTemplate)
                 .inferOptimistic(channelConfiguration.optimistic).build();
-
         finalizeChannels();
     }
 }

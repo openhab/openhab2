@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -24,7 +24,6 @@ import javax.measure.Unit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.siemensrds.points.BasePoint;
-import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.QuantityType;
 import org.openhab.core.library.types.StringType;
@@ -313,21 +312,16 @@ public class RdsHandler extends BaseThingHandler {
                 if (channelId.equals(channel.id)) {
                     switch (channel.id) {
                         case CHA_TARGET_TEMP: {
-                            double targetTemperature = Double.NaN;
+                            Command doCommand = command;
                             if (command instanceof QuantityType<?> quantityCommand) {
                                 Unit<?> unit = points.getPointByClass(channel.clazz).getUnit();
                                 QuantityType<?> temp = quantityCommand.toUnit(unit);
                                 if (temp != null) {
-                                    targetTemperature = temp.doubleValue();
+                                    doCommand = temp;
                                 }
-                            } else if (command instanceof DecimalType decimalCommand) {
-                                targetTemperature = decimalCommand.doubleValue();
                             }
-                            if (targetTemperature != Double.NaN) {
-                                points.setValue(apiKey, token, channel.clazz,
-                                        String.format("%.1f", Math.round(targetTemperature * 2) / 2.0));
-                                debouncer.initialize(channelId);
-                            }
+                            points.setValue(apiKey, token, channel.clazz, doCommand.format("%s"));
+                            debouncer.initialize(channelId);
                             break;
                         }
                         case CHA_STAT_AUTO_MODE: {

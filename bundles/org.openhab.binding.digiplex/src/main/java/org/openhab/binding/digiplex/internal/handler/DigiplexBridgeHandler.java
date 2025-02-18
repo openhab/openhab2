@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -31,14 +31,12 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.binding.digiplex.internal.DigiplexBindingConstants;
 import org.openhab.binding.digiplex.internal.DigiplexBridgeConfiguration;
 import org.openhab.binding.digiplex.internal.communication.CommunicationStatus;
 import org.openhab.binding.digiplex.internal.communication.DigiplexMessageHandler;
 import org.openhab.binding.digiplex.internal.communication.DigiplexRequest;
 import org.openhab.binding.digiplex.internal.communication.DigiplexResponse;
 import org.openhab.binding.digiplex.internal.communication.DigiplexResponseResolver;
-import org.openhab.binding.digiplex.internal.communication.ErroneousResponse;
 import org.openhab.binding.digiplex.internal.communication.events.AbstractEvent;
 import org.openhab.binding.digiplex.internal.communication.events.TroubleEvent;
 import org.openhab.binding.digiplex.internal.communication.events.TroubleStatus;
@@ -103,7 +101,7 @@ public class DigiplexBridgeHandler extends BaseBridgeHandler implements SerialPo
     @Override
     public void initialize() {
         config = getConfigAs(DigiplexBridgeConfiguration.class);
-        if (config.port.isBlank()) {
+        if (config.port == null) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "Port must be set!");
             return;
         }
@@ -296,12 +294,6 @@ public class DigiplexBridgeHandler extends BaseBridgeHandler implements SerialPo
                 updateState(channel, state);
             }
         }
-
-        @Override
-        public void handleErroneousResponse(ErroneousResponse response) {
-            logger.debug("Erroneous response: {}", response.message);
-            handleCommunicationError();
-        }
     }
 
     private class DigiplexReceiverThread extends Thread {
@@ -311,7 +303,7 @@ public class DigiplexBridgeHandler extends BaseBridgeHandler implements SerialPo
         private final InputStream stream;
 
         DigiplexReceiverThread(InputStream stream) {
-            super(String.format("OH-binding-%s-%s", DigiplexBindingConstants.BINDING_ID, "Receiver"));
+            super("DigiplexReceiveThread");
             this.stream = stream;
         }
 

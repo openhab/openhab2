@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -154,7 +154,7 @@ public class VerisureSmartLockThingHandler extends VerisureThingHandler<Verisure
             if (smartLock != null) {
                 BigDecimal installationId = smartLock.getSiteId();
                 try {
-                    String csrf = session.getCsrfToken();
+                    String csrf = session.getCsrfToken(installationId);
                     StringBuilder sb = new StringBuilder(deviceId);
                     sb.insert(4, "+");
                     String data;
@@ -213,7 +213,7 @@ public class VerisureSmartLockThingHandler extends VerisureThingHandler<Verisure
                         }
                         BigDecimal installationId = smartLocks.getSiteId();
                         try {
-                            String csrf = session.getCsrfToken();
+                            String csrf = session.getCsrfToken(installationId);
                             String url = SMARTLOCK_VOLUME_COMMAND;
                             String data = "keypad.volume=MEDIUM&keypad.beepOnKeypress=true&_keypad.beepOnKeypress=on&siren.volume=MEDIUM&voiceDevice.volume=MEDIUM&doorLock.volume="
                                     + volume + "&doorLock.voiceLevel=" + voiceLevel

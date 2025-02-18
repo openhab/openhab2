@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,6 +17,7 @@ import static org.openhab.binding.saicismart.internal.SAICiSMARTBindingConstants
 import static org.openhab.binding.saicismart.internal.SAICiSMARTBindingConstants.CHANNEL_SOC;
 
 import java.net.URISyntaxException;
+import java.time.ZonedDateTime;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -103,7 +104,8 @@ class ChargeStateUpdater implements Callable<OTA_ChrgMangDataResp> {
 
         saiCiSMARTHandler.updateState(CHANNEL_POWER, new QuantityType<>(power.intValue(), Units.WATT));
 
-        saiCiSMARTHandler.updateState(SAICiSMARTBindingConstants.CHANNEL_LAST_CHARGE_STATE_UPDATE, new DateTimeType());
+        saiCiSMARTHandler.updateState(SAICiSMARTBindingConstants.CHANNEL_LAST_CHARGE_STATE_UPDATE,
+                new DateTimeType(ZonedDateTime.now(saiCiSMARTHandler.getTimeZone())));
 
         saiCiSMARTHandler.updateStatus(ThingStatus.ONLINE);
         return chargingStatusResponseMessage.getApplicationData();

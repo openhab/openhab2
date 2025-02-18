@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -27,7 +27,6 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.jetty.client.HttpClient;
 import org.openhab.binding.insteon.internal.config.InsteonLegacyChannelConfiguration;
 import org.openhab.binding.insteon.internal.config.InsteonLegacyNetworkConfiguration;
 import org.openhab.binding.insteon.internal.device.DeviceAddress;
@@ -37,6 +36,8 @@ import org.openhab.binding.insteon.internal.device.LegacyDevice.DeviceStatus;
 import org.openhab.binding.insteon.internal.device.LegacyDeviceFeature;
 import org.openhab.binding.insteon.internal.device.LegacyDeviceType;
 import org.openhab.binding.insteon.internal.device.LegacyDeviceTypeLoader;
+import org.openhab.binding.insteon.internal.device.LegacyPollManager;
+import org.openhab.binding.insteon.internal.device.LegacyRequestManager;
 import org.openhab.binding.insteon.internal.device.X10Address;
 import org.openhab.binding.insteon.internal.device.database.LegacyModemDBEntry;
 import org.openhab.binding.insteon.internal.device.feature.LegacyFeatureListener;
@@ -120,13 +121,13 @@ public class InsteonLegacyBinding implements LegacyDriverListener, LegacyPortLis
     private InsteonLegacyNetworkHandler handler;
 
     public InsteonLegacyBinding(InsteonLegacyNetworkHandler handler, InsteonLegacyNetworkConfiguration config,
-            HttpClient httpClient, ScheduledExecutorService scheduler, SerialPortManager serialPortManager) {
+            SerialPortManager serialPortManager, ScheduledExecutorService scheduler) {
         this.handler = handler;
 
         String port = config.getRedactedPort();
         logger.debug("port = '{}'", port);
 
-        driver = new LegacyDriver(config, this, httpClient, scheduler, serialPortManager);
+        driver = new LegacyDriver(config, this, serialPortManager, scheduler);
         driver.addPortListener(this);
 
         Integer devicePollIntervalSeconds = config.getDevicePollIntervalSeconds();
@@ -268,7 +269,7 @@ public class InsteonLegacyBinding implements LegacyDriverListener, LegacyPortLis
             int ndev = checkIfInModemDatabase(device);
             if (device.hasModemDBEntry()) {
                 device.setStatus(DeviceStatus.POLLING);
-                driver.getPollManager().startPolling(device, ndev);
+                LegacyPollManager.instance().startPolling(device, ndev);
             }
         }
         devices.put(address, device);
@@ -285,7 +286,7 @@ public class InsteonLegacyBinding implements LegacyDriverListener, LegacyPortLis
         }
 
         if (device.getStatus() == DeviceStatus.POLLING) {
-            driver.getPollManager().stopPolling(device);
+            LegacyPollManager.instance().stopPolling(device);
         }
     }
 
@@ -349,6 +350,8 @@ public class InsteonLegacyBinding implements LegacyDriverListener, LegacyPortLis
         logger.debug("shutting down Insteon bridge");
         driver.stop();
         devices.clear();
+        LegacyRequestManager.destroyInstance();
+        LegacyPollManager.instance().stop();
         isActive = false;
     }
 
@@ -424,7 +427,7 @@ public class InsteonLegacyBinding implements LegacyDriverListener, LegacyPortLis
 
     public void logDeviceStatistics() {
         String msg = String.format("devices: %3d configured, %3d polling, msgs received: %5d", devices.size(),
-                driver.getPollManager().getSizeOfQueue(), messagesReceived);
+                LegacyPollManager.instance().getSizeOfQueue(), messagesReceived);
         logger.debug("{}", msg);
         messagesReceived = 0;
         for (LegacyDevice device : devices.values()) {
@@ -482,7 +485,7 @@ public class InsteonLegacyBinding implements LegacyDriverListener, LegacyPortLis
                             device.setHasModemDBEntry(true);
                         }
                         if (device.getStatus() != DeviceStatus.POLLING) {
-                            driver.getPollManager().startPolling(device, dbes.size());
+                            LegacyPollManager.instance().startPolling(device, dbes.size());
                         }
                     }
                 }
@@ -514,7 +517,7 @@ public class InsteonLegacyBinding implements LegacyDriverListener, LegacyPortLis
 
     private void handleInsteonMessage(Msg msg) throws FieldException {
         InsteonAddress toAddr = msg.getInsteonAddress("toAddress");
-        if (!msg.isBroadcast() && !msg.isAllLinkBroadcast() && !driver.isMsgForUs(toAddr)) {
+        if (!msg.isBroadcast() && !driver.isMsgForUs(toAddr)) {
             // not for one of our modems, do not process
             return;
         }

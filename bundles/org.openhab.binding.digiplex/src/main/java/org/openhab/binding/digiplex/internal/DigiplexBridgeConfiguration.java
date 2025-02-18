@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,16 +12,13 @@
  */
 package org.openhab.binding.digiplex.internal;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
-
 /**
  * The {@link DigiplexBridgeConfiguration} class contains fields mapping bridge configuration parameters.
  *
  * @author Robert Michalak - Initial contribution
  */
-@NonNullByDefault
 public class DigiplexBridgeConfiguration {
 
-    public String port = "";
-    public int baudrate = 2400;
+    public String port;
+    public int baudrate;
 }

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,6 +16,8 @@ import static org.openhab.binding.avmfritz.internal.AVMFritzBindingConstants.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -187,11 +189,13 @@ public class AVMFritzButtonHandler extends DeviceHandler {
                             : channelGroupId + ChannelUID.CHANNEL_GROUP_SEPARATOR + CHANNEL_LAST_CHANGE,
                     UnDefType.UNDEF);
         } else {
-            Instant timestamp = Instant.ofEpochSecond(lastPressedTimestamp);
+            ZonedDateTime timestamp = ZonedDateTime.ofInstant(Instant.ofEpochSecond(lastPressedTimestamp),
+                    ZoneId.systemDefault());
+            Instant then = timestamp.toInstant();
             // Avoid dispatching events if "lastpressedtimestamp" is older than now "lastTimestamp" (e.g. during
             // restart)
-            if (timestamp.isAfter(lastTimestamp)) {
-                lastTimestamp = timestamp;
+            if (then.isAfter(lastTimestamp)) {
+                lastTimestamp = then;
                 triggerThingChannel(channelGroupId == null ? CHANNEL_PRESS
                         : channelGroupId + ChannelUID.CHANNEL_GROUP_SEPARATOR + CHANNEL_PRESS, event);
             }

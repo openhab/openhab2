@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -153,7 +153,7 @@ public class RtspConnection {
                         if (future.isDone() && future.isSuccess()) {
                             Channel ch = future.channel();
                             ch.writeAndFlush(request);
-                        } else { // an error occurred
+                        } else { // an error occured
                             logger.debug("Could not reach cameras rtsp on port 554.");
                         }
                     }

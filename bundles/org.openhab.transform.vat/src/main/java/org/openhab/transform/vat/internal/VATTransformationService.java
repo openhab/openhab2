@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -11,6 +11,8 @@
  * SPDX-License-Identifier: EPL-2.0
  */
 package org.openhab.transform.vat.internal;
+
+import static org.openhab.transform.vat.internal.VATTransformationConstants.*;
 
 import java.math.BigDecimal;
 
@@ -34,7 +36,6 @@ import org.slf4j.LoggerFactory;
 public class VATTransformationService implements TransformationService {
 
     private final Logger logger = LoggerFactory.getLogger(VATTransformationService.class);
-    private final RateProvider rateProvider = new RateProvider();
 
     @Override
     public @Nullable String transform(String valueString, String sourceString) throws TransformationException {
@@ -52,11 +53,12 @@ public class VATTransformationService implements TransformationService {
         try {
             value = new BigDecimal(valueString);
         } catch (NumberFormatException e) {
-            value = rateProvider.getPercentage(valueString);
-            if (value == null) {
+            String rate = RATES.get(valueString);
+            if (rate == null) {
                 logger.warn("Input value '{}' could not be converted to a valid number or country code", valueString);
                 throw new TransformationException("VAT Transformation can only be used with numeric inputs", e);
             }
+            value = new BigDecimal(rate);
         }
 
         return addVAT(source, value).toString();

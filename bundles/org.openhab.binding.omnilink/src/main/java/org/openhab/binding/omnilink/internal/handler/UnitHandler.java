@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -160,9 +160,11 @@ public class UnitHandler extends AbstractOmnilinkStatusHandler<ExtendedUnitStatu
     public void updateChannels(ExtendedUnitStatus status) {
         logger.debug("updateChannels called for Unit status: {}", status);
         int unitStatus = status.getStatus();
-        int level = Status.UNIT_OFF;
+        int level = 0;
 
-        if (unitStatus == Status.UNIT_ON) {
+        if (unitStatus == Status.UNIT_OFF) {
+            level = 0;
+        } else if (unitStatus == Status.UNIT_ON) {
             level = 100;
         } else if ((unitStatus >= Status.UNIT_SCENE_A) && (unitStatus <= Status.UNIT_SCENE_L)) {
             level = 100;
@@ -204,7 +206,7 @@ public class UnitHandler extends AbstractOmnilinkStatusHandler<ExtendedUnitStatu
     /**
      * Handle a switch press event by triggering the appropriate channel.
      *
-     * @param switchPressEvent A switch press event to handle.
+     * @param switchPressEvent
      */
     public void handleSwitchPressEvent(SwitchPressEvent switchPressEvent) {
         ChannelUID activateChannel = new ChannelUID(getThing().getUID(), TRIGGER_CHANNEL_SWITCH_PRESS_EVENT);

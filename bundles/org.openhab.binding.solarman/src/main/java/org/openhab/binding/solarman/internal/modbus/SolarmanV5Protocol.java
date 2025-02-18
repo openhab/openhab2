@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -30,14 +30,13 @@ import org.openhab.binding.solarman.internal.modbus.exception.SolarmanProtocolEx
  * @author Catalin Sanda - Initial contribution
  */
 @NonNullByDefault
-public class SolarmanV5Protocol implements SolarmanProtocol {
+public class SolarmanV5Protocol {
     private final SolarmanLoggerConfiguration solarmanLoggerConfiguration;
 
     public SolarmanV5Protocol(SolarmanLoggerConfiguration solarmanLoggerConfiguration) {
         this.solarmanLoggerConfiguration = solarmanLoggerConfiguration;
     }
 
-    @Override
     public Map<Integer, byte[]> readRegisters(SolarmanLoggerConnection solarmanLoggerConnection, byte mbFunctionCode,
             int firstReg, int lastReg) throws SolarmanException {
         byte[] solarmanV5Frame = buildSolarmanV5Frame(mbFunctionCode, firstReg, lastReg);

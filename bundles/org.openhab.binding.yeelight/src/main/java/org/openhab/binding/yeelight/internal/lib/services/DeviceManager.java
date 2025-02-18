@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-import org.openhab.binding.yeelight.internal.YeelightBindingConstants;
 import org.openhab.binding.yeelight.internal.lib.device.DeviceBase;
 import org.openhab.binding.yeelight.internal.lib.device.DeviceFactory;
 import org.openhab.binding.yeelight.internal.lib.device.DeviceStatus;
@@ -99,7 +98,7 @@ public class DeviceManager {
                 } finally {
                     stopDiscovery();
                 }
-            }, "OH-binding-" + YeelightBindingConstants.BINDING_ID + "-DeviceManager").start();
+            }).start();
         }
     }
 

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -27,7 +27,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 
 import javax.measure.Unit;
 
@@ -291,12 +290,12 @@ public class ShellyUtils {
         }
     }
 
-    public static double now() {
-        return System.currentTimeMillis() / 1000.0;
+    public static Long now() {
+        return System.currentTimeMillis() / 1000L;
     }
 
     public static DateTimeType getTimestamp() {
-        return new DateTimeType(ZonedDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        return new DateTimeType(ZonedDateTime.ofInstant(Instant.ofEpochSecond(now()), ZoneId.systemDefault()));
     }
 
     public static DateTimeType getTimestamp(String zone, long timestamp) {
@@ -304,11 +303,15 @@ public class ShellyUtils {
             ZoneId zoneId = !zone.isEmpty() ? ZoneId.of(zone) : ZoneId.systemDefault();
             ZonedDateTime zdt = LocalDateTime.now().atZone(zoneId);
             int delta = zdt.getOffset().getTotalSeconds();
-            return new DateTimeType(Instant.ofEpochSecond(timestamp - delta));
+            return new DateTimeType(ZonedDateTime.ofInstant(Instant.ofEpochSecond(timestamp - delta), zoneId));
         } catch (DateTimeException e) {
             // Unable to convert device's timezone, use system one
             return getTimestamp();
         }
+    }
+
+    public static String getTimestamp(DateTimeType dt) {
+        return dt.getZonedDateTime().toString().replace('T', ' ').replace('-', '/');
     }
 
     public static String convertTimestamp(long ts) {

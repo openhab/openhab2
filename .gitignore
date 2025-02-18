@@ -5,7 +5,8 @@
 .DS_Store
 .gradle
 *.iml
-*.log
+npm-debug.log
+.build.log
 
 .metadata/
 bin/

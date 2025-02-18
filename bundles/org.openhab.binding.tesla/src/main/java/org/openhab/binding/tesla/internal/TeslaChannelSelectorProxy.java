@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,8 +19,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.library.types.DateTimeType;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
@@ -35,7 +33,6 @@ import org.openhab.core.library.unit.SIUnits;
 import org.openhab.core.library.unit.Units;
 import org.openhab.core.types.State;
 import org.openhab.core.types.Type;
-import org.openhab.core.types.UnDefType;
 
 /**
  * The {@link TeslaChannelSelectorProxy} class is a helper class to instantiate
@@ -43,7 +40,6 @@ import org.openhab.core.types.UnDefType;
  *
  * @author Karel Goderis - Initial contribution
  */
-@NonNullByDefault
 public class TeslaChannelSelectorProxy {
 
     public enum TeslaChannelSelector {
@@ -943,11 +939,11 @@ public class TeslaChannelSelectorProxy {
             @Override
             public State getState(String s, TeslaChannelSelectorProxy proxy, Map<String, String> properties) {
                 State someState = super.getState(s);
-                if (someState != UnDefType.UNDEF) {
+                if (someState != null) {
                     BigDecimal value = ((DecimalType) someState).toBigDecimal();
                     return new QuantityType<>(value, ImperialUnits.MILES_PER_HOUR);
                 } else {
-                    return UnDefType.UNDEF;
+                    return null;
                 }
             }
         },
@@ -1066,12 +1062,12 @@ public class TeslaChannelSelectorProxy {
         },
         WHEEL_TYPE("wheel_type", "wheeltype", StringType.class, true);
 
-        private final @Nullable String restID;
+        private final String restID;
         private final String channelID;
         private Class<? extends Type> typeClass;
         private final boolean isProperty;
 
-        private TeslaChannelSelector(@Nullable String restID, String channelID, Class<? extends Type> typeClass,
+        private TeslaChannelSelector(String restID, String channelID, Class<? extends Type> typeClass,
                 boolean isProperty) {
             this.restID = restID;
             this.channelID = channelID;
@@ -1081,8 +1077,7 @@ public class TeslaChannelSelectorProxy {
 
         @Override
         public String toString() {
-            String restID = this.restID;
-            return restID != null ? restID : "null";
+            return restID;
         }
 
         public String getChannelID() {
@@ -1112,7 +1107,7 @@ public class TeslaChannelSelectorProxy {
                     | InvocationTargetException e) {
             }
 
-            return UnDefType.UNDEF;
+            return null;
         }
 
         public static TeslaChannelSelector getValueSelectorFromChannelID(String valueSelectorText)
@@ -1129,8 +1124,7 @@ public class TeslaChannelSelectorProxy {
         public static TeslaChannelSelector getValueSelectorFromRESTID(String valueSelectorText)
                 throws IllegalArgumentException {
             for (TeslaChannelSelector c : TeslaChannelSelector.values()) {
-                String restID = c.restID;
-                if (restID != null && restID.equals(valueSelectorText)) {
+                if (c.restID != null && c.restID.equals(valueSelectorText)) {
                     return c;
                 }
             }

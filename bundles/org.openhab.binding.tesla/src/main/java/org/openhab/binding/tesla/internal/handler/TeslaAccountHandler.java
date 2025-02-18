@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -31,14 +31,12 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.tesla.internal.TeslaBindingConstants;
 import org.openhab.binding.tesla.internal.discovery.TeslaVehicleDiscoveryService;
-import org.openhab.binding.tesla.internal.protocol.dto.Vehicle;
-import org.openhab.binding.tesla.internal.protocol.dto.VehicleConfig;
-import org.openhab.binding.tesla.internal.protocol.dto.VehicleData;
-import org.openhab.binding.tesla.internal.protocol.dto.sso.TokenResponse;
+import org.openhab.binding.tesla.internal.protocol.Vehicle;
+import org.openhab.binding.tesla.internal.protocol.VehicleConfig;
+import org.openhab.binding.tesla.internal.protocol.VehicleData;
+import org.openhab.binding.tesla.internal.protocol.sso.TokenResponse;
 import org.openhab.core.io.net.http.HttpClientFactory;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.ChannelUID;
@@ -65,7 +63,6 @@ import com.google.gson.JsonParser;
  * @author Nicolai Grødum - Adding token based auth
  * @author Kai Kreuzer - refactored to use separate vehicle handlers
  */
-@NonNullByDefault
 public class TeslaAccountHandler extends BaseBridgeHandler {
 
     public static final int API_MAXIMUM_ERRORS_IN_INTERVAL = 3;
@@ -89,7 +86,6 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
     private final ThingTypeMigrationService thingTypeMigrationService;
 
     // Threading and Job related variables
-    @Nullable
     protected ScheduledFuture<?> connectJob;
 
     protected long lastTimeStamp;
@@ -97,12 +93,10 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
     protected int apiIntervalErrors;
     protected long eventIntervalTimestamp;
     protected int eventIntervalErrors;
-
-    protected ReentrantLock lock = new ReentrantLock();
+    protected ReentrantLock lock;
 
     private final Gson gson = new Gson();
 
-    @Nullable
     private TokenResponse logonToken;
     private final Set<VehicleListener> vehicleListeners = new HashSet<>();
 
@@ -128,17 +122,31 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
 
         updateStatus(ThingStatus.UNKNOWN);
 
-        connectJob = scheduler.scheduleWithFixedDelay(connectRunnable, 0, CONNECT_RETRY_INTERVAL,
-                TimeUnit.MILLISECONDS);
+        lock = new ReentrantLock();
+        lock.lock();
+
+        try {
+            if (connectJob == null || connectJob.isCancelled()) {
+                connectJob = scheduler.scheduleWithFixedDelay(connectRunnable, 0, CONNECT_RETRY_INTERVAL,
+                        TimeUnit.MILLISECONDS);
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
     public void dispose() {
         logger.debug("Disposing the Tesla account handler for {}", getThing().getUID());
-        ScheduledFuture<?> connectJob = this.connectJob;
-        if (connectJob != null && !connectJob.isCancelled()) {
-            connectJob.cancel(true);
-            this.connectJob = null;
+
+        lock.lock();
+        try {
+            if (connectJob != null && !connectJob.isCancelled()) {
+                connectJob.cancel(true);
+                connectJob = null;
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -159,25 +167,19 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
         // we do not have any channels -> nothing to do here
     }
 
-    public @Nullable String getAuthHeader() {
-        String accessToken = getAccessToken();
-        if (accessToken != null) {
-            return "Bearer " + accessToken;
-        } else {
-            return null;
-        }
-    }
-
-    public @Nullable String getAccessToken() {
-        TokenResponse logonToken = this.logonToken;
+    public String getAuthHeader() {
         if (logonToken != null) {
-            return logonToken.accessToken;
+            return "Bearer " + logonToken.access_token;
         } else {
             return null;
         }
     }
 
-    protected boolean checkResponse(@Nullable Response response, boolean immediatelyFail) {
+    public String getAccessToken() {
+        return logonToken.access_token;
+    }
+
+    protected boolean checkResponse(Response response, boolean immediatelyFail) {
         if (response != null && response.getStatus() == 200) {
             return true;
         } else if (response != null && response.getStatus() == 401) {
@@ -219,23 +221,17 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
 
             if (!checkResponse(response, true)) {
                 logger.debug("An error occurred while querying the vehicle");
-                return new Vehicle[0];
+                return null;
             }
 
             JsonObject jsonObject = JsonParser.parseString(response.readEntity(String.class)).getAsJsonObject();
             Vehicle[] vehicleArray = gson.fromJson(jsonObject.getAsJsonArray("response"), Vehicle[].class);
-            if (vehicleArray == null) {
-                logger.debug("Response resulted in unexpected null array");
-                return new Vehicle[0];
-            }
+
             for (Vehicle vehicle : vehicleArray) {
                 String responseString = invokeAndParse(vehicle.id, null, null, dataRequestTarget, 0);
                 VehicleConfig vehicleConfig = null;
                 if (responseString != null && !responseString.isBlank()) {
-                    VehicleData vehicleData = gson.fromJson(responseString, VehicleData.class);
-                    if (vehicleData != null) {
-                        vehicleConfig = vehicleData.vehicleConfig;
-                    }
+                    vehicleConfig = gson.fromJson(responseString, VehicleData.class).vehicle_config;
                 }
                 for (VehicleListener listener : vehicleListeners) {
                     listener.vehicleFound(vehicle, vehicleConfig);
@@ -255,7 +251,7 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
                             logger.debug("Querying the vehicle: VIN {}", vehicle.vin);
                             String vehicleJSON = gson.toJson(vehicle);
                             vehicleHandler.parseAndUpdate("queryVehicle", null, vehicleJSON);
-                            logger.trace("Vehicle is id {}/vehicle_id {}/tokens {}", vehicle.id, vehicle.vehicleId,
+                            logger.trace("Vehicle is id {}/vehicle_id {}/tokens {}", vehicle.id, vehicle.vehicle_id,
                                     vehicle.tokens);
                         }
                     }
@@ -278,8 +274,8 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
         logger.debug("Current authentication time {}", DATE_FORMATTER.format(Instant.now()));
 
         if (token != null) {
-            Instant tokenCreationInstant = Instant.ofEpochMilli(token.createdAt * 1000);
-            Instant tokenExpiresInstant = Instant.ofEpochMilli((token.createdAt + token.expiresIn) * 1000);
+            Instant tokenCreationInstant = Instant.ofEpochMilli(token.created_at * 1000);
+            Instant tokenExpiresInstant = Instant.ofEpochMilli((token.created_at + token.expires_in) * 1000);
             logger.debug("Found a request token from {}", DATE_FORMATTER.format(tokenCreationInstant));
             logger.debug("Access token expiration time {}", DATE_FORMATTER.format(tokenExpiresInstant));
 
@@ -310,8 +306,8 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
         return new ThingStatusInfo(ThingStatus.ONLINE, ThingStatusDetail.NONE, null);
     }
 
-    protected @Nullable String invokeAndParse(@Nullable String vehicleId, @Nullable String command,
-            @Nullable String payLoad, WebTarget target, int noOfretries) {
+    protected String invokeAndParse(String vehicleId, String command, String payLoad, WebTarget target,
+            int noOfretries) {
         logger.debug("Invoking: {}", command);
 
         if (vehicleId != null) {
@@ -320,29 +316,26 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
             if (payLoad != null) {
                 if (command != null) {
                     response = target.resolveTemplate("cmd", command).resolveTemplate("vid", vehicleId).request()
-                            .header("Authorization", getAuthHeader())
+                            .header("Authorization", "Bearer " + logonToken.access_token)
                             .post(Entity.entity(payLoad, MediaType.APPLICATION_JSON_TYPE));
                 } else {
                     response = target.resolveTemplate("vid", vehicleId).request()
-                            .header("Authorization", getAuthHeader())
+                            .header("Authorization", "Bearer " + logonToken.access_token)
                             .post(Entity.entity(payLoad, MediaType.APPLICATION_JSON_TYPE));
                 }
             } else if (command != null) {
                 response = target.resolveTemplate("cmd", command).resolveTemplate("vid", vehicleId)
-                        .request(MediaType.APPLICATION_JSON_TYPE).header("Authorization", getAuthHeader()).get();
+                        .request(MediaType.APPLICATION_JSON_TYPE)
+                        .header("Authorization", "Bearer " + logonToken.access_token).get();
             } else {
                 response = target.resolveTemplate("vid", vehicleId).request(MediaType.APPLICATION_JSON_TYPE)
-                        .header("Authorization", getAuthHeader()).get();
+                        .header("Authorization", "Bearer " + logonToken.access_token).get();
             }
 
             if (!checkResponse(response, false)) {
-                if (response == null) {
-                    logger.debug(
-                            "An error occurred while communicating with the vehicle during request, the response was null");
-                    return null;
-                }
                 logger.debug("An error occurred while communicating with the vehicle during request {}: {}: {}",
-                        command, response.getStatus(), response.getStatusInfo().getReasonPhrase());
+                        command, (response != null) ? response.getStatus() : "",
+                        (response != null) ? response.getStatusInfo().getReasonPhrase() : "No Response");
                 if (response.getStatus() == 408 && noOfretries > 0) {
                     try {
                         // we give the vehicle a moment to wake up and try the request again
@@ -384,7 +377,7 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
                 if (authenticationResult.getStatus() == ThingStatus.ONLINE) {
                     // get a list of vehicles
                     Response response = productsTarget.request(MediaType.APPLICATION_JSON_TYPE)
-                            .header("Authorization", getAuthHeader()).get();
+                            .header("Authorization", "Bearer " + logonToken.access_token).get();
 
                     if (response != null && response.getStatus() == 200 && response.hasEntity()) {
                         updateStatus(ThingStatus.ONLINE);
@@ -443,12 +436,11 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
 
         private TeslaVehicleHandler handler;
         private String request;
-        @Nullable
         private String payLoad;
         private WebTarget target;
         private boolean allowWakeUpForCommands;
 
-        public Request(TeslaVehicleHandler handler, String request, @Nullable String payLoad, WebTarget target,
+        public Request(TeslaVehicleHandler handler, String request, String payLoad, WebTarget target,
                 boolean allowWakeUpForCommands) {
             this.handler = handler;
             this.request = request;
@@ -475,8 +467,8 @@ public class TeslaAccountHandler extends BaseBridgeHandler {
         }
     }
 
-    public Request newRequest(TeslaVehicleHandler teslaVehicleHandler, String command, @Nullable String payLoad,
-            WebTarget target, boolean allowWakeUpForCommands) {
+    public Request newRequest(TeslaVehicleHandler teslaVehicleHandler, String command, String payLoad, WebTarget target,
+            boolean allowWakeUpForCommands) {
         return new Request(teslaVehicleHandler, command, payLoad, target, allowWakeUpForCommands);
     }
 

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,7 +19,8 @@ import static org.mockito.Mockito.times;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -118,9 +119,10 @@ public class DeconzTest {
     @Test
     public void dateTimeConversionTest() {
         DateTimeType dateTime = Util.convertTimestampToDateTime("2020-08-22T11:09Z");
-        assertEquals(new DateTimeType(Instant.parse("2020-08-22T11:09:00Z")), dateTime);
+        assertEquals(new DateTimeType(ZonedDateTime.parse("2020-08-22T11:09:00Z")), dateTime);
 
         dateTime = Util.convertTimestampToDateTime("2020-08-22T11:09:47");
-        assertEquals(new DateTimeType(Instant.parse("2020-08-22T11:09:47Z")), dateTime);
+        assertEquals(new DateTimeType(ZonedDateTime.parse("2020-08-22T11:09:47Z")).toZone(ZoneId.systemDefault()),
+                dateTime);
     }
 }

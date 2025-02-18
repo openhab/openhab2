@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,7 +15,6 @@ package org.openhab.binding.juicenet.internal.handler;
 import static org.openhab.binding.juicenet.internal.JuiceNetBindingConstants.*;
 
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.Objects;
@@ -30,6 +29,7 @@ import org.openhab.binding.juicenet.internal.api.dto.JuiceNetApiDeviceStatus;
 import org.openhab.binding.juicenet.internal.api.dto.JuiceNetApiInfo;
 import org.openhab.binding.juicenet.internal.api.dto.JuiceNetApiTouSchedule;
 import org.openhab.core.config.core.Configuration;
+import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.library.types.DateTimeType;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
@@ -61,6 +61,8 @@ public class JuiceNetDeviceHandler extends BaseThingHandler {
 
     private final Logger logger = LoggerFactory.getLogger(JuiceNetDeviceHandler.class);
 
+    private final TimeZoneProvider timeZoneProvider;
+
     // properties
     private String name = "";
 
@@ -73,8 +75,10 @@ public class JuiceNetDeviceHandler extends BaseThingHandler {
     JuiceNetApiTouSchedule deviceTouSchedule = new JuiceNetApiTouSchedule();
     JuiceNetApiCar deviceCar = new JuiceNetApiCar();
 
-    public JuiceNetDeviceHandler(Thing thing) {
+    public JuiceNetDeviceHandler(Thing thing, TimeZoneProvider timeZoneProvider) {
         super(thing);
+
+        this.timeZoneProvider = timeZoneProvider;
     }
 
     public void setNameAndToken(String name, String token) {
@@ -215,7 +219,7 @@ public class JuiceNetDeviceHandler extends BaseThingHandler {
                         return;
                     }
 
-                    ZonedDateTime datetime = ((DateTimeType) command).getZonedDateTime(ZoneId.systemDefault());
+                    ZonedDateTime datetime = ((DateTimeType) command).getZonedDateTime();
                     Long targetTime = datetime.toEpochSecond() + datetime.get(ChronoField.OFFSET_SECONDS);
                     logger.debug("DateTime: {} - {}", datetime.toString(), targetTime);
 
@@ -310,6 +314,10 @@ public class JuiceNetDeviceHandler extends BaseThingHandler {
         }
     }
 
+    private ZonedDateTime toZonedDateTime(long localEpochSeconds) {
+        return Instant.ofEpochSecond(localEpochSeconds).atZone(timeZoneProvider.getTimeZone());
+    }
+
     private void refreshStatusChannels() {
         updateState(CHANNEL_STATE, new StringType(deviceStatus.state));
 
@@ -324,9 +332,9 @@ public class JuiceNetDeviceHandler extends BaseThingHandler {
         updateState(CHANNEL_MESSAGE, new StringType(deviceStatus.message));
         updateState(CHANNEL_OVERRIDE, OnOffType.from(deviceStatus.showOverride));
         updateState(CHANNEL_CHARGING_TIME_LEFT, new QuantityType<>(deviceStatus.chargingTimeLeft, Units.SECOND));
-        updateState(CHANNEL_PLUG_UNPLUG_TIME, new DateTimeType(Instant.ofEpochSecond(deviceStatus.plugUnplugTime)));
-        updateState(CHANNEL_TARGET_TIME, new DateTimeType(Instant.ofEpochSecond(deviceStatus.targetTime)));
-        updateState(CHANNEL_UNIT_TIME, new DateTimeType(Instant.ofEpochSecond(deviceStatus.utcTime)));
+        updateState(CHANNEL_PLUG_UNPLUG_TIME, new DateTimeType(toZonedDateTime(deviceStatus.plugUnplugTime)));
+        updateState(CHANNEL_TARGET_TIME, new DateTimeType(toZonedDateTime(deviceStatus.targetTime)));
+        updateState(CHANNEL_UNIT_TIME, new DateTimeType(toZonedDateTime(deviceStatus.utcTime)));
         updateState(CHANNEL_TEMPERATURE, new QuantityType<>(deviceStatus.temperature, SIUnits.CELSIUS));
         updateState(CHANNEL_CURRENT_LIMIT, new QuantityType<>(deviceStatus.charging.ampsLimit, Units.AMPERE));
         updateState(CHANNEL_CURRENT, new QuantityType<>(deviceStatus.charging.ampsCurrent, Units.AMPERE));

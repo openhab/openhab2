@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,11 @@
 package org.openhab.binding.pjlinkdevice.internal.discovery;
 
 import java.net.InetAddress;
-import java.util.List;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,7 +27,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.pjlinkdevice.internal.PJLinkDeviceBindingConstants;
 import org.openhab.core.config.discovery.AbstractDiscoveryService;
-import org.openhab.core.net.NetUtil;
 import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.ThingUID;
 import org.slf4j.Logger;
@@ -60,7 +63,7 @@ public abstract class AbstractDiscoveryParticipant extends AbstractDiscoveryServ
     @Override
     protected void startScan() {
         logger.trace("PJLinkProjectorDiscoveryParticipant startScan");
-        List<InetAddress> addressesToScan = NetUtil.getFullRangeOfAddressesToScan();
+        Set<InetAddress> addressesToScan = generateAddressesToScan();
         scannedIPcount = 0;
         for (InetAddress ip : addressesToScan) {
             getExecutorService().execute(() -> {
@@ -103,4 +106,26 @@ public abstract class AbstractDiscoveryParticipant extends AbstractDiscoveryServ
     }
 
     protected abstract void checkAddress(InetAddress ip, int tcpPort, int timeout);
+
+    private Set<InetAddress> generateAddressesToScan() {
+        try {
+            Set<InetAddress> addressesToScan = new HashSet<>();
+            ArrayList<NetworkInterface> interfaces = java.util.Collections
+                    .list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface networkInterface : interfaces) {
+                if (networkInterface.isLoopback() || !networkInterface.isUp()) {
+                    continue;
+                }
+                for (InterfaceAddress i : networkInterface.getInterfaceAddresses()) {
+                    collectAddressesToScan(addressesToScan, i);
+                }
+            }
+            return addressesToScan;
+        } catch (SocketException e) {
+            logger.debug("Could not enumerate network interfaces", e);
+        }
+        return new HashSet<>();
+    }
+
+    protected abstract void collectAddressesToScan(Set<InetAddress> addressesToScan, InterfaceAddress i);
 }

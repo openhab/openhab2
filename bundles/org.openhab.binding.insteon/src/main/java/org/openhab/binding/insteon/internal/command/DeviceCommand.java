@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -28,7 +28,6 @@ import org.openhab.binding.insteon.internal.device.InsteonAddress;
 import org.openhab.binding.insteon.internal.device.InsteonDevice;
 import org.openhab.binding.insteon.internal.device.ProductData;
 import org.openhab.binding.insteon.internal.device.database.LinkDBRecord;
-import org.openhab.binding.insteon.internal.device.database.ModemDBRecord;
 import org.openhab.binding.insteon.internal.device.feature.FeatureEnums.KeypadButtonToggleMode;
 import org.openhab.binding.insteon.internal.handler.InsteonDeviceHandler;
 import org.openhab.binding.insteon.internal.handler.InsteonThingHandler;
@@ -104,8 +103,7 @@ public class DeviceCommand extends InsteonCommand {
                         "set a button radio group for a configured Insteon KeypadLinc device"),
                 buildCommandUsage(CLEAR_BUTTON_RADIO_GROUP + " <thingId> <button1> <button2> [<button3> ... <button7>]",
                         "clear a button radio group for a configured Insteon KeypadLinc device"),
-                buildCommandUsage(REFRESH + " " + ALL_OPTION + "|<thingId>",
-                        "refresh data for a specific or all configured Insteon devices"));
+                buildCommandUsage(REFRESH + " <thingId>", "refresh data for a configured Insteon device"));
     }
 
     @Override
@@ -224,11 +222,7 @@ public class DeviceCommand extends InsteonCommand {
                 break;
             case REFRESH:
                 if (args.length == 2) {
-                    if (ALL_OPTION.equals(args[1])) {
-                        refreshDevices(console);
-                    } else {
-                        refreshDevice(console, args[1], true);
-                    }
+                    refreshDevice(console, args[1]);
                 } else {
                     printUsage(console, args[0]);
                 }
@@ -252,6 +246,7 @@ public class DeviceCommand extends InsteonCommand {
                     strings = getAllDeviceHandlers().map(InsteonThingHandler::getThingId).toList();
                     break;
                 case LIST_DATABASE:
+                case REFRESH:
                     strings = getInsteonDeviceHandlers().map(InsteonDeviceHandler::getThingId).toList();
                     break;
                 case ADD_DATABASE_CONTROLLER:
@@ -277,7 +272,6 @@ public class DeviceCommand extends InsteonCommand {
                     break;
                 case LIST_MISSING_LINKS:
                 case ADD_MISSING_LINKS:
-                case REFRESH:
                     strings = Stream.concat(Stream.of(ALL_OPTION),
                             getInsteonDeviceHandlers().map(InsteonDeviceHandler::getThingId)).toList();
                     break;
@@ -466,9 +460,9 @@ public class DeviceCommand extends InsteonCommand {
             console.println("The modem database is not loaded yet.");
         } else {
             List<String> deviceLinks = device.getMissingDeviceLinks().entrySet().stream()
-                    .map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue())).toList();
+                    .map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue().getRecord())).toList();
             List<String> modemLinks = device.getMissingModemLinks().entrySet().stream()
-                    .map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue())).toList();
+                    .map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue().getRecord())).toList();
             if (deviceLinks.isEmpty() && modemLinks.isEmpty()) {
                 console.println("There are no missing links for device " + device.getAddress() + ".");
             } else {
@@ -500,33 +494,33 @@ public class DeviceCommand extends InsteonCommand {
             console.println("The device " + thingId + " is not configured or enabled!");
         } else if (!device.getLinkDB().isComplete()) {
             console.println("The link database for device " + thingId + " is not loaded yet.");
+        } else if (!device.getLinkDB().getChanges().isEmpty()) {
+            console.println("The link database for device " + thingId + " has pending changes.");
         } else if (!getModem().getDB().isComplete()) {
             console.println("The modem database is not loaded yet.");
+        } else if (!getModem().getDB().getChanges().isEmpty()) {
+            console.println("The modem database has pending changes.");
         } else {
-            List<LinkDBRecord> deviceLinks = device.getMissingDeviceLinks().values().stream().toList();
-            List<ModemDBRecord> modemLinks = device.getMissingModemLinks().values().stream().toList();
-            if (deviceLinks.isEmpty() && modemLinks.isEmpty()) {
+            int deviceLinkCount = device.getMissingDeviceLinks().size();
+            int modemLinkCount = device.getMissingModemLinks().size();
+            if (deviceLinkCount == 0 && modemLinkCount == 0) {
                 console.println("There are no missing links for device " + device.getAddress() + ".");
             } else {
-                if (!deviceLinks.isEmpty()) {
+                if (deviceLinkCount > 0) {
                     if (!device.isAwake() || !device.isResponding()) {
-                        console.println("Scheduling " + deviceLinks.size() + " missing links for device "
+                        console.println("Scheduling " + deviceLinkCount + " missing links for device "
                                 + device.getAddress() + " to be added to its link database the next time it is "
-                                + (device.isBatteryPowered() ? "awake" : "online") + ".");
+                                + (device.isBatteryPowered() ? "awake" : "responding") + ".");
                     } else {
-                        console.println("Adding " + deviceLinks.size() + " missing links for device "
-                                + device.getAddress() + " to its link database...");
+                        console.println("Adding " + deviceLinkCount + " missing links for device " + device.getAddress()
+                                + " to its link database...");
                     }
-                    deviceLinks.forEach(record -> device.getLinkDB().markRecordForAddOrModify(record.getAddress(),
-                            record.getGroup(), record.isController(), record.getData()));
-                    device.getLinkDB().update();
+                    device.addMissingDeviceLinks();
                 }
-                if (!modemLinks.isEmpty()) {
-                    console.println("Adding " + modemLinks.size() + " missing links for device " + device.getAddress()
+                if (modemLinkCount > 0) {
+                    console.println("Adding " + modemLinkCount + " missing links for device " + device.getAddress()
                             + " to the modem database...");
-                    modemLinks.forEach(record -> getModem().getDB().markRecordForAddOrModify(record.getAddress(),
-                            record.getGroup(), record.isController(), record.getData()));
-                    getModem().getDB().update();
+                    device.addMissingModemLinks();
                 }
             }
         }
@@ -611,7 +605,7 @@ public class DeviceCommand extends InsteonCommand {
             if (!device.isAwake() || !device.isResponding() || !getModem().getDB().isComplete()) {
                 console.println("Scheduling " + count + " pending changes for device " + device.getAddress()
                         + " to be applied to its link database the next time it is "
-                        + (device.isBatteryPowered() ? "awake" : "online") + ".");
+                        + (device.isBatteryPowered() ? "awake" : "responding") + ".");
             } else {
                 console.println("Applying " + count + " pending changes to link database for device "
                         + device.getAddress() + "...");
@@ -700,11 +694,7 @@ public class DeviceCommand extends InsteonCommand {
         }
     }
 
-    private void refreshDevices(Console console) {
-        getInsteonDeviceHandlers().forEach(handler -> refreshDevice(console, handler.getThingId(), false));
-    }
-
-    private void refreshDevice(Console console, String thingId, boolean immediate) {
+    private void refreshDevice(Console console, String thingId) {
         InsteonDevice device = getInsteonDevice(thingId);
         if (device == null) {
             console.println("The device " + thingId + " is not configured or enabled!");
@@ -716,10 +706,10 @@ public class DeviceCommand extends InsteonCommand {
             device.getLinkDB().setReload(true);
             device.resetFeaturesQueryStatus();
 
-            if (!device.isAwake() || !device.isResponding() || !getModem().getDB().isComplete() || !immediate) {
-                console.println("The device " + device.getAddress()
-                        + " is scheduled to be refreshed the next time it is "
-                        + (device.isBatteryPowered() ? "awake" : !device.isResponding() ? "online" : "polled") + ".");
+            if (!device.isAwake() || !device.isResponding() || !getModem().getDB().isComplete()) {
+                console.println(
+                        "The device " + device.getAddress() + " is scheduled to be refreshed the next time it is "
+                                + (device.isBatteryPowered() ? "awake" : "responding") + ".");
             } else {
                 console.println("Refreshing device " + device.getAddress() + "...");
                 device.doPoll(0L);

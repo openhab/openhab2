@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -34,8 +34,7 @@ import org.openhab.binding.solarman.internal.defmodel.ParameterItem;
 import org.openhab.binding.solarman.internal.defmodel.Request;
 import org.openhab.binding.solarman.internal.defmodel.Validation;
 import org.openhab.binding.solarman.internal.modbus.SolarmanLoggerConnector;
-import org.openhab.binding.solarman.internal.modbus.SolarmanProtocol;
-import org.openhab.binding.solarman.internal.modbus.SolarmanProtocolFactory;
+import org.openhab.binding.solarman.internal.modbus.SolarmanV5Protocol;
 import org.openhab.binding.solarman.internal.updater.SolarmanChannelUpdater;
 import org.openhab.binding.solarman.internal.updater.SolarmanProcessResult;
 import org.openhab.core.thing.Channel;
@@ -95,10 +94,7 @@ public class SolarmanLoggerHandler extends BaseThingHandler {
                 logger.debug("Found definition for {}", config.inverterType);
             }
         }
-
-        logger.debug("Raw Type {}", config.solarmanLoggerMode);
-
-        SolarmanProtocol solarmanProtocol = SolarmanProtocolFactory.createSolarmanProtocol(config);
+        SolarmanV5Protocol solarmanV5Protocol = new SolarmanV5Protocol(config);
 
         String additionalRequests = Objects.requireNonNullElse(config.getAdditionalRequests(), "");
 
@@ -114,17 +110,17 @@ public class SolarmanLoggerHandler extends BaseThingHandler {
 
         scheduledFuture = scheduler
                 .scheduleWithFixedDelay(
-                        () -> queryLoggerAndUpdateState(solarmanLoggerConnector, solarmanProtocol, mergedRequests,
+                        () -> queryLoggerAndUpdateState(solarmanLoggerConnector, solarmanV5Protocol, mergedRequests,
                                 paramToChannelMapping, solarmanChannelUpdater),
                         0, config.refreshInterval, TimeUnit.SECONDS);
     }
 
     private void queryLoggerAndUpdateState(SolarmanLoggerConnector solarmanLoggerConnector,
-            SolarmanProtocol solarmanProtocol, List<Request> mergedRequests,
+            SolarmanV5Protocol solarmanV5Protocol, List<Request> mergedRequests,
             Map<ParameterItem, ChannelUID> paramToChannelMapping, SolarmanChannelUpdater solarmanChannelUpdater) {
         try {
             SolarmanProcessResult solarmanProcessResult = solarmanChannelUpdater.fetchDataFromLogger(mergedRequests,
-                    solarmanLoggerConnector, solarmanProtocol, paramToChannelMapping);
+                    solarmanLoggerConnector, solarmanV5Protocol, paramToChannelMapping);
 
             if (solarmanProcessResult.hasSuccessfulResponses()) {
                 updateStatus(ThingStatus.ONLINE);
@@ -153,7 +149,7 @@ public class SolarmanLoggerHandler extends BaseThingHandler {
             }
 
             return new AbstractMap.SimpleEntry<>(new ParameterItem(label, "N/A", "N/A", bcc.uom, bcc.scale, bcc.rule,
-                    parseRegisters(bcc.registers), "N/A", new Validation(), bcc.offset, Boolean.FALSE, null),
+                    parseRegisters(bcc.registers), "N/A", new Validation(), bcc.offset, Boolean.FALSE),
                     channel.getUID());
         }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }

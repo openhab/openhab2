@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,27 +12,26 @@
  */
 package org.openhab.binding.insteon.internal.transport;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.api.ContentResponse;
-import org.eclipse.jetty.client.api.Request;
-import org.eclipse.jetty.http.HttpHeader;
-import org.eclipse.jetty.http.HttpStatus;
 import org.openhab.binding.insteon.internal.utils.HexUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implements IOStream for an Insteon Hub 2
@@ -44,19 +43,19 @@ import org.openhab.binding.insteon.internal.utils.HexUtils;
  */
 @NonNullByDefault
 public class HubIOStream extends IOStream {
-    private static final String BUFFER_TAG_START = "<BS>";
-    private static final String BUFFER_TAG_END = "</BS>";
-    private static final int REQUEST_TIMEOUT = 30; // in seconds
+    private final Logger logger = LoggerFactory.getLogger(HubIOStream.class);
+
+    private static final String BS_START = "<BS>";
+    private static final String BS_END = "</BS>";
 
     private String host;
     private int port;
     private String auth;
     private int pollInterval;
-    private HttpClient httpClient;
     private ScheduledExecutorService scheduler;
     private @Nullable ScheduledFuture<?> job;
     // index of the last byte we have read in the buffer
-    private volatile int bufferIdx = -1;
+    private int bufferIdx = -1;
 
     /**
      * Constructor
@@ -66,22 +65,25 @@ public class HubIOStream extends IOStream {
      * @param username hub user name
      * @param password hub password
      * @param pollInterval hub poll interval (in milliseconds)
-     * @param httpClient the http client
      * @param scheduler the scheduler
      */
-    public HubIOStream(String host, int port, String username, String password, int pollInterval, HttpClient httpClient,
+    public HubIOStream(String host, int port, String username, String password, int pollInterval,
             ScheduledExecutorService scheduler) {
         this.host = host;
         this.port = port;
         this.auth = Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
         this.pollInterval = pollInterval;
-        this.httpClient = httpClient;
         this.scheduler = scheduler;
     }
 
     @Override
+    public boolean isOpen() {
+        return job != null;
+    }
+
+    @Override
     public boolean open() {
-        if (job != null) {
+        if (isOpen()) {
             logger.warn("hub stream is already open");
             return false;
         }
@@ -110,65 +112,93 @@ public class HubIOStream extends IOStream {
 
     @Override
     public void close() {
-        super.close();
-
         ScheduledFuture<?> job = this.job;
         if (job != null) {
             job.cancel(true);
             this.job = null;
         }
+
+        InputStream in = this.in;
+        if (in != null) {
+            try {
+                in.close();
+            } catch (IOException e) {
+                logger.debug("failed to close input stream", e);
+            }
+            this.in = null;
+        }
+
+        OutputStream out = this.out;
+        if (out != null) {
+            try {
+                out.close();
+            } catch (IOException e) {
+                logger.debug("failed to close output stream", e);
+            }
+            this.out = null;
+        }
     }
 
     /**
-     * Returns the latest buffer from the Hub
+     * Fetches the latest status buffer from the Hub
      *
-     * @return the buffer string
+     * @return string with status buffer
      * @throws IOException
      */
-    private String getBuffer() throws IOException {
+    private synchronized String bufferStatus() throws IOException {
         String result = getURL("/buffstatus.xml");
 
-        int start = result.indexOf(BUFFER_TAG_START);
-        int end = result.indexOf(BUFFER_TAG_END, start);
-        if (start == -1 || end == -1) {
-            throw new IOException("malformed buffstatus.xml");
+        int start = result.indexOf(BS_START);
+        if (start == -1) {
+            throw new IOException("malformed bufferstatus.xml");
         }
-        start += BUFFER_TAG_START.length();
+        start += BS_START.length();
+
+        int end = result.indexOf(BS_END, start);
+        if (end == -1) {
+            throw new IOException("malformed bufferstatus.xml");
+        }
 
         return result.substring(start, end).trim();
     }
 
     /**
-     * Clears the Hub buffer
+     * Sends command to Hub to clear the status buffer
      *
      * @throws IOException
      */
-    private void clearBuffer() throws IOException {
+    private synchronized void clearBuffer() throws IOException {
         logger.trace("clearing buffer");
         getURL("/1?XB=M=1");
         bufferIdx = 0;
     }
 
     /**
-     * Sends a message to the Hub
+     * Sends Insteon message (byte array) as a readable ascii string to the Hub
      *
-     * @param b byte array representing the Insteon message
-     * @throws IOException
+     * @param msg byte array representing the Insteon message
+     * @throws IOException in case of I/O error
      */
-    private void sendMessage(byte[] b) throws IOException {
-        poll(); // poll the status buffer before we send the message
-        logger.trace("sending a message");
-        getURL("/3?" + HexUtils.getHexString(b) + "=I=3");
+    public synchronized void write(ByteBuffer msg) throws IOException {
+        poll(); // fetch the status buffer before we send out commands
+
+        StringBuilder b = new StringBuilder();
+        while (msg.remaining() > 0) {
+            b.append(String.format("%02x", msg.get()));
+        }
+        String hexMsg = b.toString();
+        logger.trace("writing a message");
+        getURL("/3?" + hexMsg + "=I=3");
         bufferIdx = 0;
     }
 
     /**
-     * Polls the Hub buffer and add to input stream
+     * Polls the Hub web interface to fetch the status buffer
      *
-     * @throws IOException
+     * @throws IOException if something goes wrong with I/O
      */
-    private void poll() throws IOException {
-        String buffer = getBuffer();
+    private synchronized void poll() throws IOException {
+        String buffer = bufferStatus(); // fetch via http call
         logger.trace("poll: {}", buffer);
         // The Hub maintains a ring buffer where the last two digits (in hex!) represent
         // the position of the last byte read.
@@ -211,9 +241,10 @@ public class HubIOStream extends IOStream {
             logger.trace("no wrap:      appending new data: {}", msg);
         }
         if (msg.length() != 0) {
-            byte[] b = HexUtils.toByteArray(msg.toString());
+            byte[] array = HexUtils.toByteArray(msg.toString());
+            ByteBuffer buf = ByteBuffer.wrap(array);
             if (in instanceof HubInputStream hubInput) {
-                hubInput.add(b);
+                hubInput.handle(buf);
             } else {
                 logger.debug("hub input stream is null");
             }
@@ -234,33 +265,54 @@ public class HubIOStream extends IOStream {
     /**
      * Helper method to fetch url from http server
      *
-     * @param path the url path
+     * @param resource the url
      * @return contents returned by http server
      * @throws IOException
      */
-    private String getURL(String path) throws IOException {
-        Request request = httpClient.newRequest(host, port).path(path).header(HttpHeader.AUTHORIZATION, "Basic " + auth)
-                .timeout(REQUEST_TIMEOUT, TimeUnit.SECONDS);
-        logger.trace("getting {}", request.getURI());
+    private String getURL(String resource) throws IOException {
+        String url = "http://" + host + ":" + port + resource;
 
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         try {
-            ContentResponse response = request.send();
+            connection.setConnectTimeout(30000);
+            connection.setReadTimeout(10000);
+            connection.setUseCaches(false);
+            connection.setDoInput(true);
+            connection.setDoOutput(false);
+            connection.setRequestProperty("Authorization", "Basic " + auth);
 
-            int statusCode = response.getStatus();
-            switch (statusCode) {
-                case HttpStatus.OK_200:
-                    return response.getContentAsString();
-                case HttpStatus.UNAUTHORIZED_401:
+            logger.trace("getting {}", url);
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode != 200) {
+                if (responseCode == 401) {
                     throw new IOException(
                             "Bad username or password. See the label on the bottom of the hub for the correct login information.");
-                default:
-                    throw new IOException("GET " + request.getURI() + " failed with status code: " + statusCode);
+                } else {
+                    throw new IOException(url + " failed with the response code: " + responseCode);
+                }
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("GET " + request.getURI() + " interrupted");
-        } catch (TimeoutException | ExecutionException e) {
-            throw new IOException("GET " + request.getURI() + " failed with error: " + e.getMessage());
+
+            return getData(connection.getInputStream());
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private String getData(InputStream is) throws IOException {
+        BufferedInputStream bis = new BufferedInputStream(is);
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int length = 0;
+            while ((length = bis.read(buffer)) != -1) {
+                baos.write(buffer, 0, length);
+            }
+
+            String s = baos.toString();
+            return s;
+        } finally {
+            bis.close();
         }
     }
 
@@ -271,10 +323,10 @@ public class HubIOStream extends IOStream {
         // A buffer to keep bytes while we are waiting for the inputstream to read
         private ReadByteBuffer buffer = new ReadByteBuffer(1024);
 
-        public void add(byte[] b) throws IOException {
+        public void handle(ByteBuffer b) throws IOException {
             // Make sure we cleanup as much space as possible
             buffer.makeCompact();
-            buffer.add(b);
+            buffer.add(b.array());
         }
 
         @Override
@@ -303,18 +355,18 @@ public class HubIOStream extends IOStream {
         @Override
         public void write(int b) throws IOException {
             out.write(b);
-            flush();
+            flushBuffer();
         }
 
         @Override
         public void write(byte @Nullable [] b, int off, int len) throws IOException {
             out.write(b, off, len);
-            flush();
+            flushBuffer();
         }
 
-        @Override
-        public void flush() throws IOException {
-            sendMessage(out.toByteArray());
+        private void flushBuffer() throws IOException {
+            ByteBuffer buffer = ByteBuffer.wrap(out.toByteArray());
+            HubIOStream.this.write(buffer);
             out.reset();
         }
     }

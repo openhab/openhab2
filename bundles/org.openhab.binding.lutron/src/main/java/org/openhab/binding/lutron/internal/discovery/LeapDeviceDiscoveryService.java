@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -88,12 +88,10 @@ public class LeapDeviceDiscoveryService extends AbstractThingHandlerDiscoverySer
                         case "SunnataDimmer":
                         case "WallDimmer":
                         case "PlugInDimmer":
-                        case "DivaSmartDimmer":
                             notifyDiscovery(THING_TYPE_DIMMER, deviceId, label);
                             break;
                         case "WallSwitch":
                         case "PlugInSwitch":
-                        case "DivaSmartSwitch":
                             notifyDiscovery(THING_TYPE_SWITCH, deviceId, label);
                             break;
                         case "CasetaFanSpeedController":
@@ -101,7 +99,6 @@ public class LeapDeviceDiscoveryService extends AbstractThingHandlerDiscoverySer
                             notifyDiscovery(THING_TYPE_FAN, deviceId, label);
                             break;
                         case "Pico2Button":
-                        case "PaddleSwitchPico":
                             notifyDiscovery(THING_TYPE_PICO, deviceId, label, "model", "2B");
                             break;
                         case "Pico2ButtonRaiseLower":
@@ -121,7 +118,7 @@ public class LeapDeviceDiscoveryService extends AbstractThingHandlerDiscoverySer
                             // Don't discover sensors. Using occupancy groups instead.
                             break;
                         default:
-                            logger.info("Unrecognized device type: {} id: {}", device.deviceType, deviceId);
+                            logger.info("Unrecognized device type: {}", device.deviceType);
                             break;
                     }
                 }

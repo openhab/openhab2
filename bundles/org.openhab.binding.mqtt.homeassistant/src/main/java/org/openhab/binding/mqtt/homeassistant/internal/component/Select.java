@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -27,7 +27,7 @@ import com.google.gson.annotations.SerializedName;
  */
 @NonNullByDefault
 public class Select extends AbstractComponent<Select.ChannelConfiguration> {
-    public static final String SELECT_CHANNEL_ID = "select";
+    public static final String SELECT_CHANNEL_ID = "select"; // Randomly chosen channel "ID"
 
     /**
      * Configuration class for MQTT component
@@ -47,10 +47,15 @@ public class Select extends AbstractComponent<Select.ChannelConfiguration> {
         protected String stateTopic = "";
 
         protected String[] options = new String[0];
+
+        @SerializedName("json_attributes_topic")
+        protected @Nullable String jsonAttributesTopic;
+        @SerializedName("json_attributes_template")
+        protected @Nullable String jsonAttributesTemplate;
     }
 
-    public Select(ComponentFactory.ComponentConfiguration componentConfiguration) {
-        super(componentConfiguration, ChannelConfiguration.class);
+    public Select(ComponentFactory.ComponentConfiguration componentConfiguration, boolean newStyleChannels) {
+        super(componentConfiguration, ChannelConfiguration.class, newStyleChannels);
 
         TextValue value = new TextValue(channelConfiguration.options);
 
@@ -60,7 +65,6 @@ public class Select extends AbstractComponent<Select.ChannelConfiguration> {
                 .commandTopic(channelConfiguration.commandTopic, channelConfiguration.isRetain(),
                         channelConfiguration.getQos(), channelConfiguration.commandTemplate)
                 .inferOptimistic(channelConfiguration.optimistic).build();
-
         finalizeChannels();
     }
 }

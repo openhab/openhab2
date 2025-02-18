@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -610,6 +610,11 @@ public class HomekitCharacteristicFactory {
         return convertAndRound(degrees, SIUnits.CELSIUS, getSystemTemperatureUnit());
     }
 
+    public static double getTemperatureStep(HomekitTaggedItem taggedItem, double defaultValue) {
+        return taggedItem.getConfigurationAsQuantity(HomekitTaggedItem.STEP,
+                new QuantityType(defaultValue, SIUnits.CELSIUS), true).doubleValue();
+    }
+
     private static Supplier<CompletableFuture<Integer>> getAngleSupplier(HomekitTaggedItem taggedItem,
             int defaultValue) {
         return () -> CompletableFuture.completedFuture(getAngleFromItem(taggedItem, defaultValue));
@@ -894,7 +899,7 @@ public class HomekitCharacteristicFactory {
                         Objects.requireNonNull(new QuantityType(CoolingThresholdTemperatureCharacteristic.DEFAULT_STEP,
                                 SIUnits.CELSIUS).toUnit(getSystemTemperatureUnit())),
                         true)
-                .toUnitRelative(SIUnits.CELSIUS).doubleValue();
+                .toUnit(SIUnits.CELSIUS).doubleValue();
         return new CoolingThresholdTemperatureCharacteristic(minValue, maxValue, step,
                 getTemperatureSupplier(taggedItem, minValue), setTemperatureConsumer(taggedItem),
                 getSubscriber(taggedItem, COOLING_THRESHOLD_TEMPERATURE, updater),
@@ -974,7 +979,7 @@ public class HomekitCharacteristicFactory {
                                 new QuantityType(CurrentTemperatureCharacteristic.DEFAULT_STEP, SIUnits.CELSIUS)
                                         .toUnit(getSystemTemperatureUnit())),
                         true)
-                .toUnitRelative(SIUnits.CELSIUS).doubleValue();
+                .toUnit(SIUnits.CELSIUS).doubleValue();
         return new CurrentTemperatureCharacteristic(minValue, maxValue, step,
                 getTemperatureSupplier(taggedItem, minValue), getSubscriber(taggedItem, TARGET_TEMPERATURE, updater),
                 getUnsubscriber(taggedItem, TARGET_TEMPERATURE, updater));
@@ -1068,7 +1073,7 @@ public class HomekitCharacteristicFactory {
                         Objects.requireNonNull(new QuantityType(HeatingThresholdTemperatureCharacteristic.DEFAULT_STEP,
                                 SIUnits.CELSIUS).toUnit(getSystemTemperatureUnit())),
                         true)
-                .toUnitRelative(SIUnits.CELSIUS).doubleValue();
+                .toUnit(SIUnits.CELSIUS).doubleValue();
         return new HeatingThresholdTemperatureCharacteristic(minValue, maxValue, step,
                 getTemperatureSupplier(taggedItem, minValue), setTemperatureConsumer(taggedItem),
                 getSubscriber(taggedItem, HEATING_THRESHOLD_TEMPERATURE, updater),
@@ -1568,7 +1573,7 @@ public class HomekitCharacteristicFactory {
                                 new QuantityType(TargetTemperatureCharacteristic.DEFAULT_STEP, SIUnits.CELSIUS)
                                         .toUnit(getSystemTemperatureUnit())),
                         true)
-                .toUnitRelative(SIUnits.CELSIUS).doubleValue();
+                .toUnit(SIUnits.CELSIUS).doubleValue();
         return new TargetTemperatureCharacteristic(minValue, maxValue, step,
                 getTemperatureSupplier(taggedItem, minValue), setTemperatureConsumer(taggedItem),
                 getSubscriber(taggedItem, TARGET_TEMPERATURE, updater),

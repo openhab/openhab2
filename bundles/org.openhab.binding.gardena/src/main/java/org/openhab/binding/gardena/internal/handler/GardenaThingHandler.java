@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,6 +14,7 @@ package org.openhab.binding.gardena.internal.handler;
 
 import static org.openhab.binding.gardena.internal.GardenaBindingConstants.*;
 
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +44,7 @@ import org.openhab.binding.gardena.internal.model.dto.command.ValveSetCommand.Va
 import org.openhab.binding.gardena.internal.util.PropertyUtils;
 import org.openhab.binding.gardena.internal.util.StringUtils;
 import org.openhab.binding.gardena.internal.util.UidUtils;
+import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.library.types.DateTimeType;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
@@ -72,11 +74,13 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class GardenaThingHandler extends BaseThingHandler {
     private final Logger logger = LoggerFactory.getLogger(GardenaThingHandler.class);
+    private TimeZoneProvider timeZoneProvider;
     private @Nullable ScheduledFuture<?> commandResetFuture;
     private Map<String, Integer> commandDurations = new HashMap<>();
 
-    public GardenaThingHandler(Thing thing) {
+    public GardenaThingHandler(Thing thing, TimeZoneProvider timeZoneProvider) {
         super(thing);
+        this.timeZoneProvider = timeZoneProvider;
     }
 
     @Override
@@ -209,7 +213,8 @@ public class GardenaThingHandler extends BaseThingHandler {
                     if (date == null) {
                         return UnDefType.NULL;
                     } else {
-                        return new DateTimeType(date.toInstant());
+                        ZonedDateTime zdt = ZonedDateTime.ofInstant(date.toInstant(), timeZoneProvider.getTimeZone());
+                        return new DateTimeType(zdt);
                     }
             }
         } catch (GardenaException e) {

@@ -115,123 +115,99 @@ Example of tomorrow and today prices data structure - an array of tuples:
 [
   {
     "startsAt": "2022-09-27T00:00:00.000+02:00",
-    "total": 3.8472,
-    "level": "NORMAL"
+    "total": 3.8472
   },
   {
     "startsAt": "2022-09-27T01:00:00.000+02:00",
-    "total": 3.0748,
-    "level": "NORMAL"
+    "total": 3.0748
   },
   {
     "startsAt": "2022-09-27T02:00:00.000+02:00",
-    "total": 2.2725,
-    "level": "CHEAP"
+    "total": 2.2725
   },
   {
     "startsAt": "2022-09-27T03:00:00.000+02:00",
-    "total": 2.026,
-    "level": "VERY_CHEAP"
+    "total": 2.026
   },
   {
     "startsAt": "2022-09-27T04:00:00.000+02:00",
-    "total": 2.6891,
-    "level": "CHEAP"
+    "total": 2.6891
   },
   {
     "startsAt": "2022-09-27T05:00:00.000+02:00",
-    "total": 3.7821,
-    "level": "NORMAL"
+    "total": 3.7821
   },
   {
     "startsAt": "2022-09-27T06:00:00.000+02:00",
-    "total": 3.9424,
-    "level": "EXPENSIVE"
+    "total": 3.9424
   },
   {
     "startsAt": "2022-09-27T07:00:00.000+02:00",
-    "total": 4.158,
-    "level": "EXPENSIVE"
+    "total": 4.158
   },
   {
     "startsAt": "2022-09-27T08:00:00.000+02:00",
-    "total": 4.2648,
-    "level": "EXPENSIVE"
+    "total": 4.2648
   },
   {
     "startsAt": "2022-09-27T09:00:00.000+02:00",
-    "total": 4.2443,
-    "level": "EXPENSIVE"
+    "total": 4.2443
   },
   {
     "startsAt": "2022-09-27T10:00:00.000+02:00",
-    "total": 4.2428,
-    "level": "EXPENSIVE"
+    "total": 4.2428
   },
   {
     "startsAt": "2022-09-27T11:00:00.000+02:00",
-    "total": 4.2061,
-    "level": "EXPENSIVE"
+    "total": 4.2061
   },
   {
     "startsAt": "2022-09-27T12:00:00.000+02:00",
-    "total": 4.1458,
-    "level": "EXPENSIVE"
+    "total": 4.1458
   },
   {
     "startsAt": "2022-09-27T13:00:00.000+02:00",
-    "total": 3.9396,
-    "level": "NORMAL"
+    "total": 3.9396
   },
   {
     "startsAt": "2022-09-27T14:00:00.000+02:00",
-    "total": 3.8563,
-    "level": "NORMAL"
+    "total": 3.8563
   },
   {
     "startsAt": "2022-09-27T15:00:00.000+02:00",
-    "total": 4.0364,
-    "level": "EXPENSIVE"
+    "total": 4.0364
   },
   {
     "startsAt": "2022-09-27T16:00:00.000+02:00",
-    "total": 4.093,
-    "level": "EXPENSIVE"
+    "total": 4.093
   },
   {
     "startsAt": "2022-09-27T17:00:00.000+02:00",
-    "total": 4.1823,
-    "level": "EXPENSIVE"
+    "total": 4.1823
   },
   {
     "startsAt": "2022-09-27T18:00:00.000+02:00",
-    "total": 4.2779,
-    "level": "EXPENSIVE"
+    "total": 4.2779
   },
   {
     "startsAt": "2022-09-27T19:00:00.000+02:00",
-    "total": 4.3154,
-    "level": "VERY_EXPENSIVE"
+    "total": 4.3154
   },
   {
     "startsAt": "2022-09-27T20:00:00.000+02:00",
-    "total": 4.3469,
-    "level": "VERY_EXPENSIVE"
+    "total": 4.3469
   },
   {
     "startsAt": "2022-09-27T21:00:00.000+02:00",
-    "total": 4.2329,
-    "level": "EXPENSIVE"
+    "total": 4.2329
   },
   {
     "startsAt": "2022-09-27T22:00:00.000+02:00",
-    "total": 4.1014,
-    "level": "EXPENSIVE"
+    "total": 4.1014
   },
   {
     "startsAt": "2022-09-27T23:00:00.000+02:00",
-    "total": 4.0265,
-    "level": "EXPENSIVE"
+    "total": 4.0265
   }
 ]
 ```

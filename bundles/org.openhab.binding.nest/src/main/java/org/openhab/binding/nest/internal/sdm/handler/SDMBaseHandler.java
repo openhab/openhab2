@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -46,6 +46,7 @@ import org.openhab.binding.nest.internal.sdm.dto.SDMTraits.SDMResolution;
 import org.openhab.binding.nest.internal.sdm.exception.FailedSendingSDMDataException;
 import org.openhab.binding.nest.internal.sdm.exception.InvalidSDMAccessTokenException;
 import org.openhab.binding.nest.internal.sdm.listener.SDMEventListener;
+import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
@@ -74,9 +75,11 @@ public abstract class SDMBaseHandler extends BaseThingHandler implements SDMIden
     protected String deviceId = "";
     protected @Nullable ZonedDateTime lastRefreshDateTime;
     protected @Nullable ScheduledFuture<?> refreshJob;
+    protected final TimeZoneProvider timeZoneProvider;
 
-    public SDMBaseHandler(Thing thing) {
+    public SDMBaseHandler(Thing thing, TimeZoneProvider timeZoneProvider) {
         super(thing);
+        this.timeZoneProvider = timeZoneProvider;
     }
 
     @Override

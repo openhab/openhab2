@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -64,22 +64,20 @@ import org.openhab.core.types.UnDefType;
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class RobonectHandlerTest {
 
-    private static final ZoneId TIME_ZONE = ZoneId.of("Europe/Berlin");
-
     private RobonectHandler subject;
 
     private @Mock Thing robonectThingMock;
     private @Mock RobonectClient robonectClientMock;
     private @Mock ThingHandlerCallback callbackMock;
     private @Mock HttpClientFactory httpClientFactoryMock;
-    private @Mock TimeZoneProvider timeZoneProvider;
+    private @Mock TimeZoneProvider timezoneProvider;
 
     @BeforeEach
     public void setUp() {
         Mockito.when(robonectThingMock.getUID()).thenReturn(new ThingUID("1:2:3"));
-        Mockito.when(timeZoneProvider.getTimeZone()).thenReturn(TIME_ZONE);
+        Mockito.when(timezoneProvider.getTimeZone()).thenReturn(ZoneId.of("Europe/Berlin"));
 
-        subject = new RobonectHandler(robonectThingMock, httpClientFactoryMock, timeZoneProvider);
+        subject = new RobonectHandler(robonectThingMock, httpClientFactoryMock, timezoneProvider);
         subject.setCallback(callbackMock);
         subject.setRobonectClient(robonectClientMock);
     }
@@ -112,7 +110,7 @@ public class RobonectHandlerTest {
         State value = stateCaptor.getValue();
         assertTrue(value instanceof DateTimeType);
 
-        ZonedDateTime zdt = ((DateTimeType) value).getZonedDateTime(TIME_ZONE);
+        ZonedDateTime zdt = ((DateTimeType) value).getZonedDateTime();
         assertEquals(1, zdt.getDayOfMonth());
         assertEquals(2017, zdt.getYear());
         assertEquals(Month.MAY, zdt.getMonth());
@@ -161,7 +159,7 @@ public class RobonectHandlerTest {
         State errorDate = errorDateCaptor.getValue();
         assertTrue(errorDate instanceof DateTimeType);
 
-        ZonedDateTime zdt = ((DateTimeType) errorDate).getZonedDateTime(TIME_ZONE);
+        ZonedDateTime zdt = ((DateTimeType) errorDate).getZonedDateTime();
         assertEquals(1, zdt.getDayOfMonth());
         assertEquals(2017, zdt.getYear());
         assertEquals(Month.MAY, zdt.getMonth());

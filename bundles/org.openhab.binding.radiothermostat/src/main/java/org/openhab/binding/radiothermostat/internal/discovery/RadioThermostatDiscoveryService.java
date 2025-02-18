@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,13 +16,12 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Enumeration;
@@ -64,8 +63,6 @@ public class RadioThermostatDiscoveryService extends AbstractDiscoveryService {
     private static final String RADIOTHERMOSTAT_DISCOVERY_MESSAGE = "TYPE: WM-DISCOVER\r\nVERSION: 1.0\r\n\r\nservices:com.marvell.wm.system*\r\n\r\n";
 
     private static final String SSDP_MATCH = "WM-NOTIFY";
-    private static final String MULTICAST_GROUP = "239.255.255.250";
-    private static final int MULTICAST_PORT = 1900;
     private static final int BACKGROUND_SCAN_INTERVAL_SECONDS = 300;
 
     private @Nullable ScheduledFuture<?> scheduledFuture = null;
@@ -122,7 +119,8 @@ public class RadioThermostatDiscoveryService extends AbstractDiscoveryService {
      * @throws SocketException
      */
     private void sendDiscoveryBroacast(NetworkInterface ni) throws UnknownHostException, SocketException {
-        InetAddress m = InetAddress.getByName(MULTICAST_GROUP);
+        InetAddress m = InetAddress.getByName("239.255.255.250");
+        final int port = 1900;
         logger.debug("Sending discovery broadcast");
         try {
             Enumeration<InetAddress> addrs = ni.getInetAddresses();
@@ -145,17 +143,14 @@ public class RadioThermostatDiscoveryService extends AbstractDiscoveryService {
             // this seems to be okay on linux systems, but osx apparently prefers ipv6, so this
             // prevents responses from being received unless the ipv4 stack is given preference.
             MulticastSocket socket = new MulticastSocket(null);
-            InetSocketAddress inetSocketAddress = new InetSocketAddress(InetAddress.getByName(MULTICAST_GROUP),
-                    MULTICAST_PORT);
-
             socket.setSoTimeout(5000);
             socket.setReuseAddress(true);
+            // socket.setBroadcast(true);
             socket.setNetworkInterface(ni);
-            socket.joinGroup(inetSocketAddress, null);
+            socket.joinGroup(m);
             logger.debug("Joined UPnP Multicast group on Interface: {}", ni.getName());
             byte[] requestMessage = RADIOTHERMOSTAT_DISCOVERY_MESSAGE.getBytes(StandardCharsets.UTF_8);
-            DatagramPacket datagramPacket = new DatagramPacket(requestMessage, requestMessage.length, m,
-                    MULTICAST_PORT);
+            DatagramPacket datagramPacket = new DatagramPacket(requestMessage, requestMessage.length, m, port);
             socket.send(datagramPacket);
             try {
                 // Try to ensure that joinGroup has taken effect. Without this delay, the query
@@ -183,7 +178,7 @@ public class RadioThermostatDiscoveryService extends AbstractDiscoveryService {
                             "Timed out waiting for multicast response. Presumably all devices have already responded.");
                 }
             } finally {
-                socket.leaveGroup(inetSocketAddress, null);
+                socket.leaveGroup(m);
                 socket.close();
             }
         } catch (IOException | InterruptedException e) {
@@ -220,8 +215,8 @@ public class RadioThermostatDiscoveryService extends AbstractDiscoveryService {
             if ("location".equals(key)) {
                 try {
                     url = value;
-                    ip = new URI(value).getHost();
-                } catch (URISyntaxException e) {
+                    ip = new URL(value).getHost();
+                } catch (MalformedURLException e) {
                     logger.debug("Malfored URL {}", e.getMessage());
                 }
             }
@@ -270,12 +265,12 @@ public class RadioThermostatDiscoveryService extends AbstractDiscoveryService {
 
         logger.debug("Got discovered device.");
 
-        String label = String.format("Radio Thermostat (%s)", name);
+        String label = String.format("RadioThermostat (%s)", name);
         result = DiscoveryResultBuilder.create(thingUid).withLabel(label)
                 .withRepresentationProperty(RadioThermostatBindingConstants.PROPERTY_IP)
                 .withProperty(RadioThermostatBindingConstants.PROPERTY_IP, ip)
                 .withProperty(RadioThermostatBindingConstants.PROPERTY_ISCT80, isCT80).build();
-        logger.debug("New Radio Thermostat discovered with ID=<{}>", uuid);
+        logger.debug("New RadioThermostat discovered with ID=<{}>", uuid);
         this.thingDiscovered(result);
     }
 }

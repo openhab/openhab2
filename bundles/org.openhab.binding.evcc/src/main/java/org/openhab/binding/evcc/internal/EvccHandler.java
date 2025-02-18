@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,10 +14,8 @@ package org.openhab.binding.evcc.internal;
 
 import static org.openhab.binding.evcc.internal.EvccBindingConstants.*;
 
-import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -35,7 +33,6 @@ import org.openhab.binding.evcc.internal.api.dto.PV;
 import org.openhab.binding.evcc.internal.api.dto.Plan;
 import org.openhab.binding.evcc.internal.api.dto.Result;
 import org.openhab.binding.evcc.internal.api.dto.Vehicle;
-import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.library.CoreItemFactory;
 import org.openhab.core.library.types.DateTimeType;
 import org.openhab.core.library.types.DecimalType;
@@ -69,7 +66,6 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class EvccHandler extends BaseThingHandler {
     private final Logger logger = LoggerFactory.getLogger(EvccHandler.class);
-    private final TimeZoneProvider timeZoneProvider;
     private @Nullable EvccAPI evccAPI;
     private @Nullable ScheduledFuture<?> statePollingJob;
 
@@ -81,11 +77,10 @@ public class EvccHandler extends BaseThingHandler {
     private Set<String> vehicleFeatureHeating = new HashSet<String>();
     private Set<String> loadpointFeatureHeating = new HashSet<String>();
 
-    Map<String, Triple<Boolean, Float, Instant>> vehiclePlans = new HashMap<>();
+    Map<String, Triple<Boolean, Float, ZonedDateTime>> vehiclePlans = new HashMap<>();
 
-    public EvccHandler(Thing thing, TimeZoneProvider timeZoneProvider) {
+    public EvccHandler(Thing thing) {
         super(thing);
-        this.timeZoneProvider = timeZoneProvider;
     }
 
     @Override
@@ -286,7 +281,7 @@ public class EvccHandler extends BaseThingHandler {
                             }
                         }
                         case CHANNEL_VEHICLE_PLAN_ENABLED, CHANNEL_HEATING_PLAN_ENABLED -> {
-                            Triple<Boolean, Float, Instant> planValues = vehiclePlans.get(vehicleName);
+                            Triple<Boolean, Float, ZonedDateTime> planValues = vehiclePlans.get(vehicleName);
                             if (command == OnOffType.ON) {
                                 evccAPI.setVehiclePlan(vehicleName, planValues.getMiddle().intValue(),
                                         planValues.getRight());
@@ -301,7 +296,7 @@ public class EvccHandler extends BaseThingHandler {
                             }
                         }
                         case CHANNEL_VEHICLE_PLAN_SOC -> {
-                            Triple<Boolean, Float, Instant> planValues = vehiclePlans.get(vehicleName);
+                            Triple<Boolean, Float, ZonedDateTime> planValues = vehiclePlans.get(vehicleName);
                             if (command instanceof QuantityType<?> qt) {
                                 vehiclePlans.put(vehicleName, new Triple<>(planValues.getLeft(),
                                         qt.toUnit(Units.PERCENT).floatValue(), planValues.getRight()));
@@ -320,7 +315,7 @@ public class EvccHandler extends BaseThingHandler {
                             }
                         }
                         case CHANNEL_HEATING_PLAN_TEMPERATURE -> {
-                            Triple<Boolean, Float, Instant> planValues = vehiclePlans.get(vehicleName);
+                            Triple<Boolean, Float, ZonedDateTime> planValues = vehiclePlans.get(vehicleName);
                             if (command instanceof QuantityType<?> qt) {
                                 vehiclePlans.put(vehicleName, new Triple<>(planValues.getLeft(),
                                         qt.toUnit(SIUnits.CELSIUS).floatValue(), planValues.getRight()));
@@ -339,14 +334,14 @@ public class EvccHandler extends BaseThingHandler {
                             }
                         }
                         case CHANNEL_VEHICLE_PLAN_TIME, CHANNEL_HEATING_PLAN_TIME -> {
-                            Triple<Boolean, Float, Instant> planValues = vehiclePlans.get(vehicleName);
+                            Triple<Boolean, Float, ZonedDateTime> planValues = vehiclePlans.get(vehicleName);
                             if (command instanceof DateTimeType dtt) {
-                                vehiclePlans.put(vehicleName,
-                                        new Triple<>(planValues.getLeft(), planValues.getMiddle(), dtt.getInstant()));
+                                vehiclePlans.put(vehicleName, new Triple<>(planValues.getLeft(), planValues.getMiddle(),
+                                        dtt.getZonedDateTime()));
                                 if (planValues.getLeft()) {
                                     try {
                                         evccAPI.setVehiclePlan(vehicleName, planValues.getMiddle().intValue(),
-                                                dtt.getInstant());
+                                                dtt.getZonedDateTime());
                                     } catch (DateTimeParseException e) {
                                         logger.debug("Failed to set vehicle plan time: ", e);
                                     }
@@ -381,7 +376,7 @@ public class EvccHandler extends BaseThingHandler {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR,
                     "@text/offline.configuration-error.no-host");
         } else {
-            this.evccAPI = new EvccAPI(url, timeZoneProvider);
+            this.evccAPI = new EvccAPI(url);
             logger.debug("Setting up refresh job ...");
             statePollingJob = scheduler.scheduleWithFixedDelay(this::refresh, 0, config.refreshInterval,
                     TimeUnit.SECONDS);
@@ -966,19 +961,18 @@ public class EvccHandler extends BaseThingHandler {
 
         Plan plan = null;
         if (vehicle != null) {
-            plan = vehicle.getPlan();
+            vehicle.getPlan();
         }
         if (plan == null && vehiclePlans.get(vehicleName) == null) {
-            vehiclePlans.put(vehicleName, new Triple<>(false, 100f, Instant.now().plus(12, ChronoUnit.HOURS)));
+            vehiclePlans.put(vehicleName, new Triple<>(false, 100f, ZonedDateTime.now().plusHours(12)));
         } else if (plan != null) {
-            vehiclePlans.put(vehicleName,
-                    new Triple<>(true, plan.getSoC(), ZonedDateTime.parse(plan.getTime()).toInstant()));
+            vehiclePlans.put(vehicleName, new Triple<>(true, plan.getSoC(), ZonedDateTime.parse(plan.getTime())));
         }
         updateVehiclePlanChannel(uid, vehicleName, channelGroup, isHeating);
     }
 
     private void updateVehiclePlanChannel(ThingUID uid, String vehicleName, String channelGroup, boolean isHeating) {
-        Triple<Boolean, Float, Instant> planValues = vehiclePlans.get(vehicleName);
+        Triple<Boolean, Float, ZonedDateTime> planValues = vehiclePlans.get(vehicleName);
 
         if (isHeating) {
             ChannelUID channel = new ChannelUID(uid, channelGroup, CHANNEL_HEATING_PLAN_ENABLED);

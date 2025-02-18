@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -93,8 +93,11 @@ public class IntesisBoxHandler extends BaseThingHandler implements IntesisBoxCha
         if (!config.ipAddress.isEmpty()) {
             updateStatus(ThingStatus.UNKNOWN);
             scheduler.submit(() -> {
+
+                String readerThreadName = "OH-binding-" + getThing().getUID().getAsString();
+
                 IntesisBoxSocketApi intesisLocalApi = intesisBoxSocketApi = new IntesisBoxSocketApi(config.ipAddress,
-                        config.port, "OH-binding-" + getThing().getUID());
+                        config.port, readerThreadName);
                 intesisLocalApi.addIntesisBoxChangeListener(this);
                 try {
                     intesisLocalApi.openConnection();

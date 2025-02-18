@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,6 @@
  */
 package org.openhab.persistence.dynamodb.internal;
 
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -34,12 +33,12 @@ public class DynamoDBHistoricItem implements HistoricItem {
 
     private final String name;
     private final State state;
-    private final Instant instant;
+    private final ZonedDateTime timestamp;
 
-    public DynamoDBHistoricItem(String name, State state, Instant instant) {
+    public DynamoDBHistoricItem(String name, State state, ZonedDateTime timestamp) {
         this.name = name;
         this.state = state;
-        this.instant = instant;
+        this.timestamp = timestamp;
     }
 
     @Override
@@ -49,12 +48,7 @@ public class DynamoDBHistoricItem implements HistoricItem {
 
     @Override
     public ZonedDateTime getTimestamp() {
-        return instant.atZone(ZoneId.systemDefault());
-    }
-
-    @Override
-    public Instant getInstant() {
-        return instant;
+        return timestamp;
     }
 
     @Override
@@ -64,6 +58,6 @@ public class DynamoDBHistoricItem implements HistoricItem {
 
     @Override
     public String toString() {
-        return name + ": " + DATEFORMATTER.format(getTimestamp()) + ": " + state.toString();
+        return name + ": " + DATEFORMATTER.format(timestamp) + ": " + state.toString();
     }
 }

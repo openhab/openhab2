@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -45,9 +45,6 @@ import org.openhab.core.types.StateOption;
 import org.openhab.core.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -127,24 +124,22 @@ public class OnvifConnection {
     private String user = "";
     private String password = "";
     private int onvifPort = 80;
-    public String deviceXAddr = "http://" + ipAddress + "/onvif/device_service";
+    private String deviceXAddr = "http://" + ipAddress + "/onvif/device_service";
     private String eventXAddr = "http://" + ipAddress + "/onvif/device_service";
     private String mediaXAddr = "http://" + ipAddress + "/onvif/device_service";
     @SuppressWarnings("unused")
     private String imagingXAddr = "http://" + ipAddress + "/onvif/device_service";
     private String ptzXAddr = "http://" + ipAddress + "/onvif/ptz_service";
-    public String subscriptionXAddr = "";
+    public String subscriptionXAddr = "http://" + ipAddress + "/onvif/device_service";
     public String subscriptionId = "";
     private boolean isConnected = false;
     private int mediaProfileIndex = 0;
     private String rtspUri = "";
     private IpCameraHandler ipCameraHandler;
+    private boolean supportsEvents = false; // camera has replied that it can do events
     // Use/skip events even if camera support them. API cameras skip, as their own methods give better results.
     private boolean usingEvents = false;
-    private int onvifEventServiceType = 0; // 0 = disabled, 1 = PullMessages, 2 = WSBaseSubscription
     public AtomicInteger pullMessageRequests = new AtomicInteger();
-    private long createSubscriptionTimestamp;
-    public long lastPullMessageReceivedTimestamp;
 
     // These hold the cameras PTZ position in the range that the camera uses, ie
     // mine is -1 to +1
@@ -233,7 +228,7 @@ public class OnvifConnection {
                 case GetProfiles:
                     return "<GetProfiles xmlns=\"http://www.onvif.org/ver10/media/wsdl\"/>";
                 case GetServiceCapabilities:
-                    return "<GetServiceCapabilities xmlns=\"http://www.onvif.org/ver10/events/wsdl\"></GetServiceCapabilities>";
+                    return "<GetServiceCapabilities xmlns=\"http://docs.oasis-open.org/wsn/b-2/\"></GetServiceCapabilities>";
                 case GetSnapshotUri:
                     return "<GetSnapshotUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><ProfileToken>"
                             + mediaProfileTokens.get(mediaProfileIndex) + "</ProfileToken></GetSnapshotUri>";
@@ -243,14 +238,14 @@ public class OnvifConnection {
                 case GetSystemDateAndTime:
                     return "<GetSystemDateAndTime xmlns=\"http://www.onvif.org/ver10/device/wsdl\"/>";
                 case Subscribe:
-                    return "<Subscribe xmlns=\"http://docs.oasis-open.org/wsn/b-2\" xmlns:wsa=\"http://www.w3.org/2005/08/addressing\"><ConsumerReference><wsa:Address>http://"
+                    return "<Subscribe xmlns=\"http://docs.oasis-open.org/wsn/b-2/\"><ConsumerReference><Address>http://"
                             + ipCameraHandler.hostIp + ":" + SERVLET_PORT + "/ipcamera/"
                             + ipCameraHandler.getThing().getUID().getId()
-                            + "/OnvifEvent</wsa:Address></ConsumerReference><InitialTerminationTime>PT600S</InitialTerminationTime></Subscribe>";
+                            + "/OnvifEvent</Address></ConsumerReference></Subscribe>";
                 case Unsubscribe:
-                    return "<Unsubscribe xmlns=\"http://docs.oasis-open.org/wsn/b-2\"></Unsubscribe>";
+                    return "<Unsubscribe xmlns=\"http://docs.oasis-open.org/wsn/b-2/\"></Unsubscribe>";
                 case PullMessages:
-                    return "<PullMessages xmlns=\"http://www.onvif.org/ver10/events/wsdl\"><Timeout>PT8S</Timeout><MessageLimit>10</MessageLimit></PullMessages>";
+                    return "<PullMessages xmlns=\"http://www.onvif.org/ver10/events/wsdl\"><Timeout>PT8S</Timeout><MessageLimit>1</MessageLimit></PullMessages>";
                 case GetEventProperties:
                     return "<GetEventProperties xmlns=\"http://www.onvif.org/ver10/events/wsdl\"/>";
                 case RelativeMoveLeft:
@@ -278,7 +273,7 @@ public class OnvifConnection {
                             + mediaProfileTokens.get(mediaProfileIndex)
                             + "</ProfileToken><Translation><Zoom x=\"-0.0240506344\" xmlns=\"http://www.onvif.org/ver10/schema\"/></Translation></RelativeMove>";
                 case Renew:
-                    return "<Renew xmlns=\"http://docs.oasis-open.org/wsn/b-2\"><TerminationTime>PT600S</TerminationTime></Renew>";
+                    return "<Renew xmlns=\"http://docs.oasis-open.org/wsn/b-2\"><TerminationTime>PT10S</TerminationTime></Renew>";
                 case GetConfigurations:
                     return "<GetConfigurations xmlns=\"http://www.onvif.org/ver20/ptz/wsdl\"></GetConfigurations>";
                 case GetConfigurationOptions:
@@ -306,10 +301,10 @@ public class OnvifConnection {
             }
         } catch (IndexOutOfBoundsException e) {
             if (!isConnected) {
-                logger.debug("IndexOutOfBoundsException occurred, camera is not connected via ONVIF: {}",
+                logger.debug("IndexOutOfBoundsException occured, camera is not connected via ONVIF: {}",
                         e.getMessage());
             } else {
-                logger.debug("IndexOutOfBoundsException occurred, {}", e.getMessage());
+                logger.debug("IndexOutOfBoundsException occured, {}", e.getMessage());
             }
         }
         return "notfound";
@@ -319,24 +314,19 @@ public class OnvifConnection {
         logger.trace("ONVIF {} reply is: {}", requestType, message);
         switch (requestType) {
             case CreatePullPointSubscription:
-                setSubscriptionXAddr(message);
-                if (!subscriptionXAddr.isEmpty()) {
-                    sendOnvifRequest(RequestType.PullMessages, subscriptionXAddr);
+                supportsEvents = true;
+                subscriptionXAddr = Helper.fetchXML(message, "SubscriptionReference>", "Address>");
+                int start = message.indexOf("<dom0:SubscriptionId");
+                int end = message.indexOf("</dom0:SubscriptionId>");
+                if (start > -1 && end > start) {
+                    subscriptionId = message.substring(start, end + 22);
                 }
-                break;
-            case Subscribe:
-                setSubscriptionXAddr(message);
+                logger.debug("subscriptionXAddr={} subscriptionId={}", subscriptionXAddr, subscriptionId);
+                sendOnvifRequest(RequestType.PullMessages, subscriptionXAddr);
                 break;
             case GetCapabilities:
                 parseXAddr(message);
-                setOnvifEventServiceType(message.contains("WSPullPointSupport>true"),
-                        message.contains("WSSubscriptionPolicySupport>true"));
-                if (!getEventsSupported() && ipCameraHandler.cameraConfig.getOnvifEventServiceType() != 1) {
-                    // If the camera does not report event capabilities here we also check with GetServiceCapabilities.
-                    sendOnvifRequest(RequestType.GetServiceCapabilities, mediaXAddr);
-                } else {
-                    sendOnvifRequest(RequestType.GetProfiles, mediaXAddr);
-                }
+                sendOnvifRequest(RequestType.GetProfiles, mediaXAddr);
                 break;
             case GetDeviceInformation:
                 break;
@@ -349,13 +339,14 @@ public class OnvifConnection {
                     sendPTZRequest(RequestType.GetNodes);
                 }
                 if (usingEvents) {// stops API cameras from getting sent ONVIF events.
-                    createSubscription();
+                    sendOnvifRequest(RequestType.GetEventProperties, eventXAddr);
+                    sendOnvifRequest(RequestType.GetServiceCapabilities, eventXAddr);
                 }
                 break;
             case GetServiceCapabilities:
-                setOnvifEventServiceType(message.contains("WSPullPointSupport=\"true\""),
-                        message.contains("WSSubscriptionPolicySupport=\"true\""));
-                sendOnvifRequest(RequestType.GetProfiles, mediaXAddr);
+                if (message.contains("WSSubscriptionPolicySupport=\"true\"")) {
+                    sendOnvifRequest(RequestType.Subscribe, eventXAddr);
+                }
                 break;
             case GetSnapshotUri:
                 String url = Helper.fetchXML(message, ":MediaUri", ":Uri");
@@ -377,7 +368,7 @@ public class OnvifConnection {
                 if (xml != null) {
                     rtspUri = xml;
                     logger.debug("GetStreamUri: {}", rtspUri);
-                    if (ipCameraHandler.rtspUri.isEmpty()) {// only use if not hard coded in initialize()
+                    if (ipCameraHandler.cameraConfig.getFfmpegInput().isEmpty()) {
                         ipCameraHandler.rtspUri = rtspUri;
                     }
                 }
@@ -387,16 +378,11 @@ public class OnvifConnection {
                 parseDateAndTime(message);
                 break;
             case PullMessages:
-                try {
-                    eventReceived(message);
-                } catch (Exception e) {
-                    logger.error("Error processing PullMessages error:\n{}\nmessage: {}", e.toString(), message);
-                }
-                if (!subscriptionXAddr.isEmpty()) {
-                    sendOnvifRequest(RequestType.PullMessages, subscriptionXAddr);
-                }
+                eventRecieved(message);
+                sendOnvifRequest(RequestType.PullMessages, subscriptionXAddr);
                 break;
             case GetEventProperties:
+                sendOnvifRequest(RequestType.CreatePullPointSubscription, eventXAddr);
                 break;
             case Renew:
                 break;
@@ -420,108 +406,6 @@ public class OnvifConnection {
                 break;
             default:
                 break;
-        }
-    }
-
-    private void setOnvifEventServiceType(boolean cameraSupportsPullPointSupport,
-            boolean cameraSupportsSubscriptionPolicySupport) {
-        if (cameraSupportsPullPointSupport && ipCameraHandler.cameraConfig.getOnvifEventServiceType() == 0
-                || ipCameraHandler.cameraConfig.getOnvifEventServiceType() == 2) {
-            onvifEventServiceType = 1;
-        } else if (cameraSupportsSubscriptionPolicySupport
-                && ipCameraHandler.cameraConfig.getOnvifEventServiceType() == 0
-                || ipCameraHandler.cameraConfig.getOnvifEventServiceType() == 3) {
-            onvifEventServiceType = 2;
-        }
-    }
-
-    public void processBadRequest(RequestType requestType) {
-        logger.trace("ONVIF {} processing bad request for camera {}.", requestType, ipAddress);
-        switch (requestType) {
-            case CreatePullPointSubscription:
-                subscriptionXAddr = "";
-                logger.debug("Camera {} returned bad request on CreatePullPointSubscription. Trying again later.",
-                        ipAddress);
-                break;
-            case Subscribe:
-                subscriptionXAddr = "";
-                logger.debug("Camera {} returned bad request on WSBaseSubscription. Trying again later.", ipAddress);
-                break;
-            case GetServiceCapabilities:
-                logger.debug(
-                        "Camera {} returned bad request on GetServiceCapabilities. Cannot auto detect supported event types.",
-                        ipAddress);
-                sendOnvifRequest(RequestType.GetProfiles, mediaXAddr);
-                break;
-            case PullMessages:
-                logger.debug("PullMessages returned bad request for camera {}, re-creating subscription now",
-                        ipAddress);
-                createSubscription();
-                break;
-            case Renew:
-                logger.debug("Renew subscription returned bad request for camera {}, re-creating subscription now",
-                        ipAddress);
-                createSubscription();
-                break;
-            default:
-                break;
-        }
-    }
-
-    void setSubscriptionXAddr(String message) {
-        subscriptionXAddr = Helper.fetchXML(message, "SubscriptionReference>", "Address>");
-        int start = message.indexOf("<dom0:SubscriptionId");
-        int end = message.indexOf("</dom0:SubscriptionId>");
-        if (start > -1 && end > start) {
-            subscriptionId = message.substring(start, end + 22);
-        }
-        logger.debug("subscriptionXAddr={} subscriptionId={}", subscriptionXAddr, subscriptionId);
-    }
-
-    public void createSubscription() {
-        if (!getEventsSupported()) {
-            // ONVIF events are disabled or not supported.
-            return;
-        }
-
-        // Only send new subscription every 5 seconds if the camera is offline or there are already too much
-        // subscriptions.
-        if (createSubscriptionTimestamp == 0) {
-            createSubscriptionTimestamp = System.currentTimeMillis();
-        } else if (System.currentTimeMillis() - createSubscriptionTimestamp < 5000) {
-            // Subscription sent less than 5 seconds ago.
-            return;
-        }
-
-        // Prefer PullPoint events over WSBaseSubscription because there is no way to check if a WSBaseSubscription is
-        // already registered on the camera.
-        if (onvifEventServiceType == 1) {
-            sendOnvifRequest(RequestType.CreatePullPointSubscription, eventXAddr);
-        } else if (onvifEventServiceType == 2) {
-            sendOnvifRequest(RequestType.Subscribe, eventXAddr);
-        }
-    }
-
-    /**
-     * This method should be executed regularly to renew the event subscription and to check if a new subscription is
-     * needed.
-     */
-    public void checkAndRenewEventSubscription() {
-        if (getEventsSupported()) {
-            // If we get events via PullMessages check if a PullMessages request is running or we just received an
-            // answer in the last second. If this is not the case create a new PullMessages subscription.
-            if (onvifEventServiceType == 1 && pullMessageRequests.intValue() == 0
-                    && System.currentTimeMillis() - lastPullMessageReceivedTimestamp > 1000) {
-                logger.debug("The alarm stream was not running for camera {}, re-starting it now", ipAddress);
-                createSubscription();
-            } else if (!subscriptionXAddr.isEmpty()) {
-                // Renew the active subscription.
-                sendOnvifRequest(RequestType.Renew, subscriptionXAddr);
-            } else {
-                // The camera claims to have event support, but no subscription was created yet. Try to create a new
-                // subscription.
-                createSubscription();
-            }
         }
     }
 
@@ -576,7 +460,7 @@ public class OnvifConnection {
         }
         temp = Helper.fetchXML(message, "<tt:Events", "tt:XAddr");
         if (!temp.isEmpty()) {
-            eventXAddr = temp;
+            subscriptionXAddr = eventXAddr = temp;
             logger.debug("eventsXAddr: {}", eventXAddr);
         }
         temp = Helper.fetchXML(message, "<tt:Media", "tt:XAddr");
@@ -813,179 +697,148 @@ public class OnvifConnection {
         }
     }
 
-    public void eventReceived(String eventMessage) {
-        Document xmlDocument;
-        try {
-            xmlDocument = Helper.loadXMLFromString(eventMessage);
-        } catch (Exception e) {
-            logger.error("Error parsing ONVIF xml.", e);
+    public void eventRecieved(String eventMessage) {
+        String topic = Helper.fetchXML(eventMessage, "Topic", "tns1:");
+        if (topic.isEmpty()) {
+            logger.debug("No ONVIF Events occured in the last 8 seconds");
             return;
         }
-        NodeList NotificationMessageNodeList = xmlDocument.getElementsByTagName("wsnt:NotificationMessage");
-        for (int i = 0; i < NotificationMessageNodeList.getLength(); i++) {
-            Element notificationMessageElement = (Element) NotificationMessageNodeList.item(i);
-
-            Element topicElement = (Element) notificationMessageElement.getElementsByTagName("wsnt:Topic").item(0);
-            String topic = topicElement.getFirstChild().getNodeValue().replace("tns1:", "");
-
-            String sourceName = "";
-            String sourceValue = "";
-            Element sourceElement = (Element) notificationMessageElement.getElementsByTagName("tt:Source").item(0);
-
-            if (sourceElement != null) {
-                Element sourceItemElement = (Element) sourceElement.getElementsByTagName("tt:SimpleItem").item(0);
-                sourceName = sourceItemElement.getAttributes().getNamedItem("Name").getNodeValue();
-                sourceValue = sourceItemElement.getAttributes().getNamedItem("Value").getNodeValue();
-            }
-
-            Element dataElement = (Element) notificationMessageElement.getElementsByTagName("tt:Data").item(0);
-
-            if (dataElement == null) {
-                // Events without data element are not relevant.
-                continue;
-            }
-
-            Element dataItemElement = (Element) dataElement.getElementsByTagName("tt:SimpleItem").item(0);
-
-            String dataName = dataItemElement.getAttributes().getNamedItem("Name").getNodeValue();
-            String dataValue = dataItemElement.getAttributes().getNamedItem("Value").getNodeValue();
-
-            logger.debug("ONVIF Event Topic: {}, Source name: {}, Source value: {}, Data name: {}, Data value: {}",
-                    topic, sourceName, sourceValue, dataName, dataValue);
-            switch (topic) {
-                case "RuleEngine/CellMotionDetector/Motion":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.motionDetected(CHANNEL_CELL_MOTION_ALARM);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.noMotionDetected(CHANNEL_CELL_MOTION_ALARM);
-                    }
-                    break;
-                case "VideoAnalytics/Motion":
-                    if ("Trigger".equals(dataValue)) {
-                        ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
-                    } else if ("Normal".equals(dataValue)) {
-                        ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
-                    }
-                    break;
-                case "RuleEngine/tnsaxis:VMD3/vmd3_video_1":
-                case "RuleEngine/MotionRegionDetector/Motion":
-                case "VideoSource/MotionAlarm":
-                    if ("true".equals(dataValue) || "1".equals(dataValue)) {
-                        ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
-                    } else if ("false".equals(dataValue) || "0".equals(dataValue)) {
-                        ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
-                    }
-                    break;
-                case "AudioAnalytics/Audio/DetectedSound":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.audioDetected();
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.noAudioDetected();
-                    }
-                    break;
-                case "RuleEngine/FieldDetector/ObjectsInside":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.motionDetected(CHANNEL_FIELD_DETECTION_ALARM);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.noMotionDetected(CHANNEL_FIELD_DETECTION_ALARM);
-                    }
-                    break;
-                case "RuleEngine/LineDetector/Crossed":
-                    if ("ObjectId".equals(dataName)) {
-                        ipCameraHandler.motionDetected(CHANNEL_LINE_CROSSING_ALARM);
-                    } else {
-                        ipCameraHandler.noMotionDetected(CHANNEL_LINE_CROSSING_ALARM);
-                    }
-                    break;
-                case "RuleEngine/TamperDetector/Tamper":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_TAMPER_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_TAMPER_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                case "Device/tnsaxis:HardwareFailure/StorageFailure":
-                case "Device/HardwareFailure/StorageFailure":
-                    if ("true".equals(dataValue) || "1".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_STORAGE_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue) || "0".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_STORAGE_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                case "VideoSource/ImageTooDark/AnalyticsService":
-                case "VideoSource/ImageTooDark/ImagingService":
-                case "VideoSource/ImageTooDark/RecordingService":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_TOO_DARK_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_TOO_DARK_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                case "VideoSource/GlobalSceneChange/AnalyticsService":
-                case "VideoSource/GlobalSceneChange/ImagingService":
-                case "VideoSource/GlobalSceneChange/RecordingService":
-                    if ("true".equals(dataValue) || "1".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_SCENE_CHANGE_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue) || "0".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_SCENE_CHANGE_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                case "VideoSource/ImageTooBright/AnalyticsService":
-                case "VideoSource/ImageTooBright/ImagingService":
-                case "VideoSource/ImageTooBright/RecordingService":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_TOO_BRIGHT_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_TOO_BRIGHT_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                case "VideoSource/ImageTooBlurry/AnalyticsService":
-                case "VideoSource/ImageTooBlurry/ImagingService":
-                case "VideoSource/ImageTooBlurry/RecordingService":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_TOO_BLURRY_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_TOO_BLURRY_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                case "RuleEngine/MyRuleDetector/Visitor":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_DOORBELL, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_DOORBELL, OnOffType.OFF);
-                    }
-                    break;
-                case "RuleEngine/MyRuleDetector/VehicleDetect":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_CAR_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_CAR_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                case "RuleEngine/MyRuleDetector/DogCatDetect":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_ANIMAL_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_ANIMAL_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                case "RuleEngine/MyRuleDetector/FaceDetect":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_FACE_DETECTED, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_FACE_DETECTED, OnOffType.OFF);
-                    }
-                    break;
-                case "RuleEngine/MyRuleDetector/PeopleDetect":
-                    if ("true".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_HUMAN_ALARM, OnOffType.ON);
-                    } else if ("false".equals(dataValue)) {
-                        ipCameraHandler.changeAlarmState(CHANNEL_HUMAN_ALARM, OnOffType.OFF);
-                    }
-                    break;
-                default:
-                    logger.debug("Please report this camera has an un-implemented ONVIF event. Topic: {}", topic);
-            }
+        String dataName = Helper.fetchXML(eventMessage, "tt:Data", "Name=\"");
+        String dataValue = Helper.fetchXML(eventMessage, "tt:Data", "Value=\"");
+        logger.debug("ONVIF Event Topic: {}, Data: {}, Value: {}", topic, dataName, dataValue);
+        switch (topic) {
+            case "RuleEngine/CellMotionDetector/Motion":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.motionDetected(CHANNEL_CELL_MOTION_ALARM);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.noMotionDetected(CHANNEL_CELL_MOTION_ALARM);
+                }
+                break;
+            case "VideoAnalytics/Motion":
+                if ("Trigger".equals(dataValue)) {
+                    ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
+                } else if ("Normal".equals(dataValue)) {
+                    ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
+                }
+                break;
+            case "RuleEngine/tnsaxis:VMD3/vmd3_video_1":
+            case "RuleEngine/MotionRegionDetector/Motion":
+            case "VideoSource/MotionAlarm":
+                if ("true".equals(dataValue) || "1".equals(dataValue)) {
+                    ipCameraHandler.motionDetected(CHANNEL_MOTION_ALARM);
+                } else if ("false".equals(dataValue) || "0".equals(dataValue)) {
+                    ipCameraHandler.noMotionDetected(CHANNEL_MOTION_ALARM);
+                }
+                break;
+            case "AudioAnalytics/Audio/DetectedSound":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.audioDetected();
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.noAudioDetected();
+                }
+                break;
+            case "RuleEngine/FieldDetector/ObjectsInside":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.motionDetected(CHANNEL_FIELD_DETECTION_ALARM);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.noMotionDetected(CHANNEL_FIELD_DETECTION_ALARM);
+                }
+                break;
+            case "RuleEngine/LineDetector/Crossed":
+                if ("ObjectId".equals(dataName)) {
+                    ipCameraHandler.motionDetected(CHANNEL_LINE_CROSSING_ALARM);
+                } else {
+                    ipCameraHandler.noMotionDetected(CHANNEL_LINE_CROSSING_ALARM);
+                }
+                break;
+            case "RuleEngine/TamperDetector/Tamper":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_TAMPER_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_TAMPER_ALARM, OnOffType.OFF);
+                }
+                break;
+            case "Device/tnsaxis:HardwareFailure/StorageFailure":
+            case "Device/HardwareFailure/StorageFailure":
+                if ("true".equals(dataValue) || "1".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_STORAGE_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue) || "0".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_STORAGE_ALARM, OnOffType.OFF);
+                }
+                break;
+            case "VideoSource/ImageTooDark/AnalyticsService":
+            case "VideoSource/ImageTooDark/ImagingService":
+            case "VideoSource/ImageTooDark/RecordingService":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_TOO_DARK_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_TOO_DARK_ALARM, OnOffType.OFF);
+                }
+                break;
+            case "VideoSource/GlobalSceneChange/AnalyticsService":
+            case "VideoSource/GlobalSceneChange/ImagingService":
+            case "VideoSource/GlobalSceneChange/RecordingService":
+                if ("true".equals(dataValue) || "1".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_SCENE_CHANGE_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue) || "0".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_SCENE_CHANGE_ALARM, OnOffType.OFF);
+                }
+                break;
+            case "VideoSource/ImageTooBright/AnalyticsService":
+            case "VideoSource/ImageTooBright/ImagingService":
+            case "VideoSource/ImageTooBright/RecordingService":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_TOO_BRIGHT_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_TOO_BRIGHT_ALARM, OnOffType.OFF);
+                }
+                break;
+            case "VideoSource/ImageTooBlurry/AnalyticsService":
+            case "VideoSource/ImageTooBlurry/ImagingService":
+            case "VideoSource/ImageTooBlurry/RecordingService":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_TOO_BLURRY_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_TOO_BLURRY_ALARM, OnOffType.OFF);
+                }
+                break;
+            case "RuleEngine/MyRuleDetector/Visitor":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_DOORBELL, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_DOORBELL, OnOffType.OFF);
+                }
+                break;
+            case "RuleEngine/MyRuleDetector/VehicleDetect":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_CAR_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_CAR_ALARM, OnOffType.OFF);
+                }
+                break;
+            case "RuleEngine/MyRuleDetector/DogCatDetect":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_ANIMAL_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_ANIMAL_ALARM, OnOffType.OFF);
+                }
+                break;
+            case "RuleEngine/MyRuleDetector/FaceDetect":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_FACE_DETECTED, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_FACE_DETECTED, OnOffType.OFF);
+                }
+                break;
+            case "RuleEngine/MyRuleDetector/PeopleDetect":
+                if ("true".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_HUMAN_ALARM, OnOffType.ON);
+                } else if ("false".equals(dataValue)) {
+                    ipCameraHandler.changeAlarmState(CHANNEL_HUMAN_ALARM, OnOffType.OFF);
+                }
+                break;
+            default:
+                logger.debug("Please report this camera has an un-implemented ONVIF event. Topic: {}", topic);
         }
     }
 
@@ -1165,7 +1018,7 @@ public class OnvifConnection {
     }
 
     public boolean getEventsSupported() {
-        return onvifEventServiceType > 0;
+        return supportsEvents;
     }
 
     public void setIsConnected(boolean isConnected) {
@@ -1196,8 +1049,7 @@ public class OnvifConnection {
         connecting.lock();// Lock out multiple disconnect()/connect() attempts as we try to send Unsubscribe.
         try {
             if (bootstrap != null) {
-                if (isConnected && usingEvents && !mainEventLoopGroup.isShuttingDown()
-                        && !subscriptionXAddr.isEmpty()) {
+                if (isConnected && usingEvents && !mainEventLoopGroup.isShuttingDown()) {
                     // Only makes sense to send if connected
                     // Some cameras may continue to send events even when they can't reach a server.
                     sendOnvifRequest(RequestType.Unsubscribe, subscriptionXAddr);

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,9 +12,10 @@
  */
 package org.openhab.binding.ihc.internal.converters;
 
-import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.openhab.binding.ihc.internal.ws.exeptions.ConversionException;
@@ -33,13 +34,13 @@ public class DateTimeTypeWSDateValueConverter implements Converter<WSDateValue, 
     public DateTimeType convertFromResourceValue(@NonNull WSDateValue from,
             @NonNull ConverterAdditionalInfo convertData) throws ConversionException {
         Calendar cal = dateTimeToCalendar(from, null);
-        return new DateTimeType(cal.toInstant());
+        return new DateTimeType(ZonedDateTime.ofInstant(cal.toInstant(), TimeZone.getDefault().toZoneId()));
     }
 
     @Override
     public WSDateValue convertFromOHType(@NonNull DateTimeType from, @NonNull WSDateValue value,
             @NonNull ConverterAdditionalInfo convertData) throws ConversionException {
-        Calendar cal = GregorianCalendar.from(from.getZonedDateTime(ZoneId.systemDefault()));
+        Calendar cal = GregorianCalendar.from(from.getZonedDateTime());
         short year = (short) cal.get(Calendar.YEAR);
         byte month = (byte) (cal.get(Calendar.MONTH) + 1);
         byte day = (byte) cal.get(Calendar.DAY_OF_MONTH);

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -71,10 +71,8 @@ public class PresenceDetection implements IPRequestReceivedCallback {
     private String ipPingState = "Disabled";
     protected String arpPingUtilPath = "";
     private ArpPingUtilEnum arpPingMethod = ArpPingUtilEnum.DISABLED;
-    protected @Nullable IpPingMethodEnum pingMethod = IpPingMethodEnum.DISABLED;
+    protected @Nullable IpPingMethodEnum pingMethod = null;
     private boolean iosDevice;
-    private boolean useArpPing;
-    private boolean useIcmpPing;
     private Set<Integer> tcpPorts = new HashSet<>();
 
     private Duration refreshInterval = Duration.ofMinutes(1);
@@ -190,7 +188,7 @@ public class PresenceDetection implements IPRequestReceivedCallback {
     public void setUseIcmpPing(@Nullable Boolean useSystemPing) {
         if (useSystemPing == null) {
             ipPingState = "Disabled";
-            pingMethod = IpPingMethodEnum.DISABLED;
+            pingMethod = null;
         } else if (useSystemPing) {
             final IpPingMethodEnum pingMethod = networkUtils.determinePingMethod();
             this.pingMethod = pingMethod;
@@ -222,17 +220,12 @@ public class PresenceDetection implements IPRequestReceivedCallback {
      * Sets the path to ARP ping.
      *
      * @param enable enable or disable ARP ping
-     * @param arpPingUtilPath path to Arping tool
-     * @param arpPingUtilMethod Arping tool method
+     * @param arpPingUtilPath enableDHCPListen(useDHCPsniffing);
      */
     public void setUseArpPing(boolean enable, String arpPingUtilPath, ArpPingUtilEnum arpPingUtilMethod) {
-        if (!enable) {
-            arpPingMethod = ArpPingUtilEnum.DISABLED;
-        } else {
-            setUseArpPing(enable, destination.getValue());
-            this.arpPingUtilPath = arpPingUtilPath;
-            this.arpPingMethod = arpPingUtilMethod;
-        }
+        setUseArpPing(enable, destination.getValue());
+        this.arpPingUtilPath = arpPingUtilPath;
+        this.arpPingMethod = arpPingUtilMethod;
     }
 
     public String getArpPingState() {
@@ -261,36 +254,6 @@ public class PresenceDetection implements IPRequestReceivedCallback {
      */
     public void setIOSDevice(boolean value) {
         iosDevice = value;
-    }
-
-    /**
-     * Return <code>true</code> if the device presence detection is also performed using arp ping. This gives
-     * less accurate ping latency results when used for an IPv4 destination host.
-     */
-    public boolean isUseArpPing() {
-        return useArpPing;
-    }
-
-    /**
-     * Set to <code>true</code> if the device presence detection should also be performed using arp ping. This gives
-     * less accurate ping latency results when used for an IPv4 destination host.
-     */
-    public void setUseArpPing(boolean useArpPing) {
-        this.useArpPing = useArpPing;
-    }
-
-    /**
-     * Return <code>true</code> if the device presence detection is also performed using icmp ping.
-     */
-    public boolean isUseIcmpPing() {
-        return useIcmpPing;
-    }
-
-    /**
-     * Set to <code>true</code> if the device presence detection should also be performed using icmp ping.
-     */
-    public void setUseIcmPing(boolean useIcmpPing) {
-        this.useIcmpPing = useIcmpPing;
     }
 
     /**
@@ -366,7 +329,7 @@ public class PresenceDetection implements IPRequestReceivedCallback {
         Set<String> interfaceNames = null;
 
         detectionChecks = tcpPorts.size();
-        if (pingMethod != IpPingMethodEnum.DISABLED) {
+        if (pingMethod != null) {
             detectionChecks += 1;
         }
         if (arpPingMethod.canProceed) {
@@ -422,7 +385,7 @@ public class PresenceDetection implements IPRequestReceivedCallback {
         }
 
         // ICMP ping
-        if (pingMethod != IpPingMethodEnum.DISABLED) {
+        if (pingMethod != null) {
             addAsyncDetection(completableFutures, () -> {
                 Thread.currentThread().setName("presenceDetectionICMP_" + hostname);
                 if (pingMethod == IpPingMethodEnum.JAVA_PING) {

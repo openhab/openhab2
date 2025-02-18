@@ -75,12 +75,6 @@
                     <xsl:apply-templates select="@*|node()"/>
                 </xsl:copy>
             </xsl:for-each>
-
-            <xsl:for-each select="cumulative_log">            
-                <xsl:copy>                
-                    <xsl:apply-templates select="@*|node()"/>
-                </xsl:copy>
-            </xsl:for-each>
         </xsl:template>
 
         <xsl:template match="appliance/location">
@@ -91,15 +85,6 @@
         </xsl:template>
 
         <xsl:template match="logs/point_log/period">    
-            <xsl:element name="measurement_date">
-                <xsl:value-of select="measurement/@log_date"/>
-            </xsl:element>
-            <xsl:element name="measurement">
-                <xsl:value-of select="measurement/text()"/>
-            </xsl:element>
-        </xsl:template>
-
-        <xsl:template match="logs/cumulative_log/period">    
             <xsl:element name="measurement_date">
                 <xsl:value-of select="measurement/@log_date"/>
             </xsl:element>

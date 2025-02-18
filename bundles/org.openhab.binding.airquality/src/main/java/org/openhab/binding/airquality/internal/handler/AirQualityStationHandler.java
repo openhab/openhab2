@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -40,6 +40,7 @@ import org.openhab.binding.airquality.internal.config.AirQualityConfiguration;
 import org.openhab.binding.airquality.internal.config.SensitiveGroupConfiguration;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.i18n.LocationProvider;
+import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.library.types.DateTimeType;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
@@ -77,12 +78,14 @@ import org.slf4j.LoggerFactory;
 public class AirQualityStationHandler extends BaseThingHandler {
     private final @NonNullByDefault({}) ClassLoader classLoader = AirQualityStationHandler.class.getClassLoader();
     private final Logger logger = LoggerFactory.getLogger(AirQualityStationHandler.class);
+    private final TimeZoneProvider timeZoneProvider;
     private final LocationProvider locationProvider;
 
     private @Nullable ScheduledFuture<?> refreshJob;
 
-    public AirQualityStationHandler(Thing thing, LocationProvider locationProvider) {
+    public AirQualityStationHandler(Thing thing, TimeZoneProvider timeZoneProvider, LocationProvider locationProvider) {
         super(thing);
+        this.timeZoneProvider = timeZoneProvider;
         this.locationProvider = locationProvider;
     }
 
@@ -260,7 +263,9 @@ public class AirQualityStationHandler extends BaseThingHandler {
                 return hum != -1 ? new QuantityType<>(hum, Units.PERCENT) : UnDefType.NULL;
             case TIMESTAMP:
                 AirQualityTime time = data.getTime();
-                return time != null ? new DateTimeType(time.getObservationTime()) : UnDefType.NULL;
+                return time != null
+                        ? new DateTimeType(time.getObservationTime().withZoneSameLocal(timeZoneProvider.getTimeZone()))
+                        : UnDefType.NULL;
             case DOMINENT:
                 return new StringType(data.getDominentPol());
             case DEW_POINT:

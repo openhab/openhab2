@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -39,7 +39,7 @@ class EmotivaNotifyWrapperTest extends AbstractDTOTestBase {
 
     @Test
     void marshallWithNoProperty() {
-        var dto = new EmotivaNotifyWrapper(emotivaNotifyV2KeepAliveSequence, Collections.emptyList());
+        EmotivaNotifyWrapper dto = new EmotivaNotifyWrapper(emotivaNotifyV2KeepAliveSequence, Collections.emptyList());
         String xmlAsString = xmlUtils.marshallEmotivaDTO(dto);
         assertThat(xmlAsString,
                 containsString("<emotivaNotify sequence=\"" + emotivaNotifyV2KeepAliveSequence + "\"/>"));
@@ -50,9 +50,9 @@ class EmotivaNotifyWrapperTest extends AbstractDTOTestBase {
     @Test
     void marshallWithOneProperty() {
         List<EmotivaPropertyDTO> keepAliveProperty = List.of(new EmotivaPropertyDTO("keepAlive", "7500", "true"));
-        var dto = new EmotivaNotifyWrapper(emotivaNotifyV2KeepAliveSequence, keepAliveProperty);
+        EmotivaNotifyWrapper dto = new EmotivaNotifyWrapper(emotivaNotifyV2KeepAliveSequence, keepAliveProperty);
 
-        var xmlAsString = xmlUtils.marshallEmotivaDTO(dto);
+        String xmlAsString = xmlUtils.marshallEmotivaDTO(dto);
         assertThat(xmlAsString,
                 containsString("<emotivaNotify sequence=\"" + emotivaNotifyV2KeepAliveSequence + "\">"));
         assertThat(xmlAsString, containsString("<property name=\"keepAlive\" value=\"7500\" visible=\"true\"/>"));
@@ -61,11 +61,11 @@ class EmotivaNotifyWrapperTest extends AbstractDTOTestBase {
 
     @Test
     void testUnmarshallV2() throws JAXBException {
-        var dto = (EmotivaNotifyWrapper) xmlUtils.unmarshallToEmotivaDTO(emotivaNotifyV2KeepAlive);
+        EmotivaNotifyWrapper dto = (EmotivaNotifyWrapper) xmlUtils.unmarshallToEmotivaDTO(emotivaNotifyV2KeepAlive);
         assertThat(dto.getSequence(), is(emotivaNotifyV2KeepAliveSequence));
         assertThat(dto.getTags().size(), is(1));
         assertThat(dto.getTags().get(0), instanceOf(Element.class));
-        var keepAlive = (Element) dto.getTags().get(0);
+        Element keepAlive = (Element) dto.getTags().get(0);
         assertThat(keepAlive.getTagName(), is(EmotivaSubscriptionTags.keepAlive.name()));
         assertThat(keepAlive.hasAttribute("value"), is(true));
         assertThat(keepAlive.getAttribute("value"), is("7500"));
@@ -76,18 +76,18 @@ class EmotivaNotifyWrapperTest extends AbstractDTOTestBase {
 
     @Test
     void testUnmarshallV2UnknownProperty() throws JAXBException {
-        var dto = (EmotivaNotifyWrapper) xmlUtils.unmarshallToEmotivaDTO(emotivaNotifyV2UnknownTag);
+        EmotivaNotifyWrapper dto = (EmotivaNotifyWrapper) xmlUtils.unmarshallToEmotivaDTO(emotivaNotifyV2UnknownTag);
         assertThat(dto.getSequence(), is(emotivaNotifyV2KeepAliveSequence));
         assertThat(dto.getTags().size(), is(1));
         assertThat(dto.getTags().get(0), instanceOf(Element.class));
-        var unknownCommand = (Element) dto.getTags().get(0);
+        Element unknownCommand = (Element) dto.getTags().get(0);
         assertThat(unknownCommand.getTagName(), is("unknownTag"));
         assertThat(dto.getProperties(), is(nullValue()));
     }
 
     @Test
     void testUnmarshallV3() throws JAXBException {
-        var dto = (EmotivaNotifyWrapper) xmlUtils.unmarshallToEmotivaDTO(emotivaNotifyV3KeepAlive);
+        EmotivaNotifyWrapper dto = (EmotivaNotifyWrapper) xmlUtils.unmarshallToEmotivaDTO(emotivaNotifyV3KeepAlive);
         assertThat(dto.getSequence(), is(emotivaNotifyV2KeepAliveSequence));
         assertThat(dto.getProperties().size(), is(1));
         assertThat(dto.getTags(), is(nullValue()));
@@ -95,8 +95,8 @@ class EmotivaNotifyWrapperTest extends AbstractDTOTestBase {
 
     @Test
     void testUnmarshallV3EmptyValue() throws JAXBException {
-        var dto = (EmotivaNotifyWrapper) xmlUtils.unmarshallToEmotivaDTO(emotivaNotifyV3EmptyMenuValue);
-
+        EmotivaNotifyWrapper dto = (EmotivaNotifyWrapper) xmlUtils
+                .unmarshallToEmotivaDTO(emotivaNotifyV3EmptyMenuValue);
         assertThat(dto.getSequence(), is("23929"));
         assertThat(dto.getProperties().size(), is(1));
         assertThat(dto.getProperties().get(0).getName(), is("menu"));

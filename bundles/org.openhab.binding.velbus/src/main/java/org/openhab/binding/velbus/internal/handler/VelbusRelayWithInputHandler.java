@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -62,17 +62,17 @@ public class VelbusRelayWithInputHandler extends VelbusRelayHandler {
             if (stringCommand.equals(PRESSED) || stringCommand.equals(LONG_PRESSED)) {
                 VelbusButtonPacket packet = new VelbusButtonPacket(getModuleAddress().getChannelIdentifier(channelUID));
 
-                packet.pressed();
+                packet.Pressed();
                 velbusBridgeHandler.sendPacket(packet.getBytes());
                 triggerChannel("CH6t", CommonTriggerEvents.PRESSED);
 
                 if (stringCommand.equals(LONG_PRESSED)) {
-                    packet.longPressed();
+                    packet.LongPressed();
                     velbusBridgeHandler.sendPacket(packet.getBytes());
                     triggerChannel("CH6t", CommonTriggerEvents.LONG_PRESSED);
                 }
 
-                packet.released();
+                packet.Released();
                 velbusBridgeHandler.sendPacket(packet.getBytes());
                 triggerChannel("CH6t", CommonTriggerEvents.RELEASED);
             } else {

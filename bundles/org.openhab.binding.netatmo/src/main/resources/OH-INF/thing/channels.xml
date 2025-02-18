@@ -135,8 +135,7 @@
 		<label>Setpoint Duration</label>
 		<description>Default duration of manual setpoint changes.</description>
 		<category>Time</category>
-		<state pattern="%d %unit%" min="5" max="720" step="5" readOnly="true"/>
-		<autoUpdatePolicy>veto</autoUpdatePolicy>
+		<state pattern="%d %unit%" min="5" max="720" step="5"/>
 	</channel-type>
 
 	<channel-type id="floodlight-mode">
@@ -507,7 +506,7 @@
 	</channel-type>
 
 	<channel-type id="rssi" advanced="true">
-		<item-type unitHint="dBm">Number:Power</item-type>
+		<item-type>Number:Power</item-type>
 		<label>Signal</label>
 		<description>Signal strength indicator.</description>
 		<category>QualityOfService</category>

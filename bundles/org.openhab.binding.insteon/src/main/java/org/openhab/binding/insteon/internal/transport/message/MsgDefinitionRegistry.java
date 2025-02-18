@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -153,7 +153,7 @@ public class MsgDefinitionRegistry extends InsteonResourceLoader {
                 Element child = (Element) node;
                 String nodeName = child.getNodeName();
                 if (!"header".equals(nodeName)) {
-                    // Increment the offset by the field type length
+                    // Increment the offset by the field data type length
                     offset += parseField(child, offset, data, fields);
                 } else if (offset == 0) {
                     headerLength = parseHeader(child, data, fields);
@@ -196,7 +196,7 @@ public class MsgDefinitionRegistry extends InsteonResourceLoader {
             Node node = nodes.item(i);
             if (node.getNodeType() == Node.ELEMENT_NODE) {
                 Element child = (Element) node;
-                // Increment the offset by the field type length
+                // Increment the offset by the field data type length
                 offset += parseField(child, offset, data, fields);
             }
         }
@@ -213,16 +213,16 @@ public class MsgDefinitionRegistry extends InsteonResourceLoader {
      * @param offset msg offset
      * @param data msg data to update
      * @param fields fields map to update
-     * @return field type length
+     * @return field data type length
      * @throws SAXException
      */
     private int parseField(Element element, int offset, byte[] data, Map<String, Field> fields) throws SAXException {
         String name = element.getAttribute("name");
-        FieldType fieldType = FieldType.get(element.getNodeName());
-        if (fieldType == null) {
-            throw new SAXException("invalid field type");
+        DataType dataType = DataType.get(element.getNodeName());
+        if (dataType == null) {
+            throw new SAXException("invalid field data type");
         }
-        Field field = new Field(name, offset, fieldType);
+        Field field = new Field(name, offset, dataType);
         try {
             field.set(data, element.getTextContent());
         } catch (FieldException | IllegalArgumentException e) {
@@ -231,7 +231,7 @@ public class MsgDefinitionRegistry extends InsteonResourceLoader {
         if (!name.isEmpty()) {
             fields.put(name, field);
         }
-        return fieldType.getSize();
+        return dataType.getSize();
     }
 
     /**

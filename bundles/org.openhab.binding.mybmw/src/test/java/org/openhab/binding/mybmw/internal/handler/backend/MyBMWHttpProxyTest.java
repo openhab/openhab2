@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,11 +12,14 @@
  */
 package org.openhab.binding.mybmw.internal.handler.backend;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -27,23 +30,17 @@ import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Request;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.openhab.binding.mybmw.internal.MyBMWBridgeConfiguration;
 import org.openhab.binding.mybmw.internal.dto.remote.ExecutionStatusContainer;
 import org.openhab.binding.mybmw.internal.dto.vehicle.Vehicle;
 import org.openhab.binding.mybmw.internal.dto.vehicle.VehicleBase;
 import org.openhab.binding.mybmw.internal.dto.vehicle.VehicleStateContainer;
-import org.openhab.binding.mybmw.internal.handler.MyBMWBridgeHandler;
-import org.openhab.binding.mybmw.internal.handler.auth.MyBMWTokenController;
 import org.openhab.binding.mybmw.internal.handler.enums.RemoteService;
 import org.openhab.binding.mybmw.internal.util.FileReader;
 import org.openhab.binding.mybmw.internal.utils.BimmerConstants;
 import org.openhab.binding.mybmw.internal.utils.ImageProperties;
-import org.openhab.core.auth.client.oauth2.AccessTokenResponse;
-import org.openhab.core.auth.client.oauth2.OAuthFactory;
-import org.openhab.core.thing.Bridge;
-import org.openhab.core.thing.ThingUID;
+import org.openhab.core.io.net.http.HttpClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +48,7 @@ import ch.qos.logback.classic.Level;
 
 /**
  * this test tests the different MyBMWProxy request types (GET, POST) and their errors (SUCCESS, other)
- *
+ * 
  * @author Martin Grassl - initial contribution
  */
 @NonNullByDefault
@@ -163,17 +160,14 @@ public class MyBMWHttpProxyTest {
 
     @Test
     void testSuccessfulGetVehicles() {
+        HttpClientFactory httpClientFactoryMock = Mockito.mock(HttpClientFactory.class);
         HttpClient httpClientMock = Mockito.mock(HttpClient.class);
-        OAuthFactory oAuthFactoryMock = Mockito.mock(OAuthFactory.class);
-        MyBMWBridgeHandler myBMWBridgeHandlerMock = Mockito.mock(MyBMWBridgeHandler.class);
-        Bridge myBMWBridgeMock = Mockito.mock(Bridge.class);
-        Mockito.when(myBMWBridgeHandlerMock.getThing()).thenReturn(myBMWBridgeMock);
-        Mockito.when(myBMWBridgeMock.getUID()).thenReturn(new ThingUID("mybmw", "bridge", "test"));
+        Mockito.when(httpClientFactoryMock.getCommonHttpClient()).thenReturn(httpClientMock);
 
         MyBMWBridgeConfiguration myBMWBridgeConfiguration = new MyBMWBridgeConfiguration();
 
-        MyBMWHttpProxy myBMWProxyMock = Mockito.spy(
-                new MyBMWHttpProxy(myBMWBridgeHandlerMock, httpClientMock, oAuthFactoryMock, myBMWBridgeConfiguration));
+        MyBMWHttpProxy myBMWProxyMock = Mockito
+                .spy(new MyBMWHttpProxy(httpClientFactoryMock, myBMWBridgeConfiguration));
 
         String vehiclesBaseString = FileReader.fileToString("responses/BEV/vehicles_base.json");
         List<VehicleBase> baseVehicles = JsonStringDeserializer.getVehicleBaseList(vehiclesBaseString);
@@ -199,24 +193,13 @@ public class MyBMWHttpProxyTest {
     }
 
     MyBMWHttpProxy generateMyBmwProxy(int statuscode, String responseContent) {
+        HttpClientFactory httpClientFactoryMock = Mockito.mock(HttpClientFactory.class);
         HttpClient httpClientMock = Mockito.mock(HttpClient.class);
-        OAuthFactory oAuthFactoryMock = Mockito.mock(OAuthFactory.class);
-        MyBMWBridgeHandler myBMWBridgeHandlerMock = Mockito.mock(MyBMWBridgeHandler.class);
-        Bridge myBMWBridgeMock = Mockito.mock(Bridge.class);
-        Mockito.when(myBMWBridgeHandlerMock.getThing()).thenReturn(myBMWBridgeMock);
-        Mockito.when(myBMWBridgeMock.getUID()).thenReturn(new ThingUID("mybmw", "bridge", "test"));
         Request requestMock = Mockito.mock(Request.class);
-        MyBMWTokenController bmwTokenControllerMock = Mockito.mock(MyBMWTokenController.class);
-        Mockito.when(httpClientMock.newRequest(ArgumentMatchers.anyString())).thenReturn(requestMock);
-        Mockito.when(httpClientMock.POST(ArgumentMatchers.anyString())).thenReturn(requestMock);
-
-        AccessTokenResponse token = new AccessTokenResponse();
-        token.setAccessToken("token");
-        token.setTokenType("Bearer");
-        token.setCreatedOn(Instant.now());
-        token.setExpiresIn(50);
-        Mockito.when(bmwTokenControllerMock.getToken()).thenReturn(token);
+        Mockito.when(httpClientMock.newRequest(Mockito.anyString())).thenReturn(requestMock);
+        Mockito.when(httpClientMock.POST(Mockito.anyString())).thenReturn(requestMock);
         MyBMWBridgeConfiguration myBMWBridgeConfiguration = new MyBMWBridgeConfiguration();
+        Mockito.when(httpClientFactoryMock.getCommonHttpClient()).thenReturn(httpClientMock);
 
         ContentResponse responseMock = Mockito.mock(ContentResponse.class);
         Mockito.when(responseMock.getStatus()).thenReturn(statuscode);
@@ -225,13 +208,14 @@ public class MyBMWHttpProxyTest {
         try {
             Mockito.when(requestMock.timeout(anyLong(), any())).thenReturn(requestMock);
             Mockito.when(requestMock.send()).thenReturn(responseMock);
-        } catch (InterruptedException | TimeoutException | ExecutionException e1) {
+        } catch (InterruptedException e1) {
+            logger.error(e1.getMessage(), e1);
+        } catch (TimeoutException e1) {
+            logger.error(e1.getMessage(), e1);
+        } catch (ExecutionException e1) {
             logger.error(e1.getMessage(), e1);
         }
 
-        MyBMWHttpProxy proxy = Mockito.spy(
-                new MyBMWHttpProxy(myBMWBridgeHandlerMock, httpClientMock, oAuthFactoryMock, myBMWBridgeConfiguration));
-        proxy.myBMWTokenController = bmwTokenControllerMock;
-        return proxy;
+        return new MyBMWHttpProxy(httpClientFactoryMock, myBMWBridgeConfiguration);
     }
 }

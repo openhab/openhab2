@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,6 +16,8 @@ import static org.openhab.binding.xmltv.internal.XmlTVBindingConstants.*;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -63,9 +65,11 @@ public class ChannelHandler extends BaseThingHandler {
     private State mediaIcon = UnDefType.UNDEF;
 
     public final List<Programme> programmes = new ArrayList<>();
+    private final ZoneId zoneId;
 
-    public ChannelHandler(Thing thing) {
+    public ChannelHandler(Thing thing, ZoneId zoneId) {
         super(thing);
+        this.zoneId = zoneId;
     }
 
     @Override
@@ -220,7 +224,8 @@ public class ChannelHandler extends BaseThingHandler {
     }
 
     private void updateDateTimeChannel(ChannelUID channelUID, Instant instant) {
-        updateState(channelUID, new DateTimeType(instant));
+        ZonedDateTime zds = ZonedDateTime.ofInstant(instant, zoneId);
+        updateState(channelUID, new DateTimeType(zds));
     }
 
     private QuantityType<?> getDurationInSeconds(Instant from, Instant to) {

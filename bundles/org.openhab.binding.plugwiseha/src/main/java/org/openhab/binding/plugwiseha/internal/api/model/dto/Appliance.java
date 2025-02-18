@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -43,10 +43,7 @@ public class Appliance extends PlugwiseBaseModel implements PlugwiseComparableDa
     private ZigBeeNode zigbeeNode;
 
     @XStreamImplicit(itemFieldName = "point_log", keyFieldName = "type")
-    private PointLogs pointLogs;
-
-    @XStreamImplicit(itemFieldName = "cumulative_log", keyFieldName = "type")
-    private CumulativeLogs cumulativeLogs;
+    private Logs pointLogs;
 
     @XStreamImplicit(itemFieldName = "actuator_functionality", keyFieldName = "type")
     private ActuatorFunctionalities actuatorFunctionalities;
@@ -81,18 +78,11 @@ public class Appliance extends PlugwiseBaseModel implements PlugwiseComparableDa
         return module;
     }
 
-    public PointLogs getPointLogs() {
+    public Logs getPointLogs() {
         if (pointLogs == null) {
-            pointLogs = new PointLogs();
+            pointLogs = new Logs();
         }
         return pointLogs;
-    }
-
-    public CumulativeLogs getCumulativeLogs() {
-        if (cumulativeLogs == null) {
-            cumulativeLogs = new CumulativeLogs();
-        }
-        return cumulativeLogs;
     }
 
     public ActuatorFunctionalities getActuatorFunctionalities() {
@@ -176,26 +166,6 @@ public class Appliance extends PlugwiseBaseModel implements PlugwiseComparableDa
 
     public Optional<Boolean> getFlameState() {
         return this.pointLogs.getFlameState();
-    }
-
-    public Optional<Double> getBurnerFailedStarts() {
-        return this.cumulativeLogs.getBurnerFailedStarts();
-    }
-
-    public Optional<Double> getBurnerStarts() {
-        return this.cumulativeLogs.getBurnerStarts();
-    }
-
-    public Optional<Double> getBurnerOpTime() {
-        return this.cumulativeLogs.getBurnerOpTime();
-    }
-
-    public Optional<Double> getBurnerDHWOPTime() {
-        return this.cumulativeLogs.getBurnerDHWOPTime();
-    }
-
-    public Optional<Double> getBurnerFailedIgnitions() {
-        return this.cumulativeLogs.getBurnerFailedIgnitions();
     }
 
     public Optional<Boolean> getIntendedHeatingState() {

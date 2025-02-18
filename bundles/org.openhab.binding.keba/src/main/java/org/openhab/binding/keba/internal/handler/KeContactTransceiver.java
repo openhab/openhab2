@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.openhab.binding.keba.internal.KebaBindingConstants;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.slf4j.Logger;
@@ -72,8 +71,7 @@ public class KeContactTransceiver {
                 selector = Selector.open();
 
                 if (transceiverThread == null) {
-                    transceiverThread = new Thread(transceiverRunnable,
-                            "OH-binding-" + KebaBindingConstants.BINDING_ID + "-Transceiver");
+                    transceiverThread = new Thread(transceiverRunnable, "OH-binding-Keba-Transceiver");
                     transceiverThread.start();
                 }
 

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,7 +14,8 @@ package org.openhab.binding.weatherunderground.internal.json;
 
 import java.math.BigDecimal;
 import java.net.URL;
-import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 /**
  * The {@link WeatherUndergroundJsonCurrent} is the Java class used
@@ -133,8 +134,8 @@ public class WeatherUndergroundJsonCurrent {
      *
      * @return the observation date and time or null if not defined
      */
-    public Instant getObservationTime() {
-        return WeatherUndergroundJsonUtils.convertToInstant(observation_epoch);
+    public ZonedDateTime getObservationTime(ZoneId zoneId) {
+        return WeatherUndergroundJsonUtils.convertToZonedDateTime(observation_epoch, zoneId);
     }
 
     /**

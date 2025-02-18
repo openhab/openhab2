@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import javax.measure.Unit;
@@ -129,7 +130,8 @@ public class InfluxDBStateConvertUtilsTest {
         long val = System.currentTimeMillis();
         DateTimeItem item = new DateTimeItem("name");
 
-        DateTimeType expected = new DateTimeType(Instant.ofEpochMilli(val));
+        DateTimeType expected = new DateTimeType(
+                ZonedDateTime.ofInstant(Instant.ofEpochMilli(val), ZoneId.systemDefault()));
         assertThat(InfluxDBStateConvertUtils.objectToState(val, item), equalTo(expected));
     }
 

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,6 +23,5 @@ import org.openhab.binding.solarforecast.internal.SolarForecastBindingConstants;
 @NonNullByDefault
 public class SolcastPlaneConfiguration {
     public String resourceId = SolarForecastBindingConstants.EMPTY;
-    public long refreshInterval = 150;
-    public boolean guessActuals = true;
+    public long refreshInterval = 120;
 }

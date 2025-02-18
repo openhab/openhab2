@@ -1,4 +1,4 @@
-# Pentair Binding
+# Pentair Pool
 
 This is an openHAB binding for a Pentair Pool System.
 It is based on combined efforts of many on the Internet in reverse-engineering the proprietary Pentair protocol (see References section).

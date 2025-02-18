@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -42,7 +42,7 @@ public class Location extends PlugwiseBaseModel implements PlugwiseComparableDat
     private List<String> locationAppliances = new ArrayList<>();
 
     @XStreamImplicit(itemFieldName = "point_log", keyFieldName = "type")
-    private PointLogs pointLogs;
+    private Logs pointLogs;
 
     @XStreamImplicit(itemFieldName = "actuator_functionality", keyFieldName = "type")
     private ActuatorFunctionalities actuatorFunctionalities;
@@ -67,9 +67,9 @@ public class Location extends PlugwiseBaseModel implements PlugwiseComparableDat
         return locationAppliances;
     }
 
-    public PointLogs getPointLogs() {
+    public Logs getPointLogs() {
         if (pointLogs == null) {
-            pointLogs = new PointLogs();
+            pointLogs = new Logs();
         }
         return pointLogs;
     }

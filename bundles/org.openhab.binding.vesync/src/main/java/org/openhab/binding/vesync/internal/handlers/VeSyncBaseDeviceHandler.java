@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,10 +21,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.validation.constraints.NotNull;
 
@@ -33,14 +32,11 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.vesync.internal.VeSyncBridgeConfiguration;
 import org.openhab.binding.vesync.internal.VeSyncDeviceConfiguration;
 import org.openhab.binding.vesync.internal.dto.requests.VeSyncAuthenticatedRequest;
-import org.openhab.binding.vesync.internal.dto.requests.VeSyncProtocolConstants;
 import org.openhab.binding.vesync.internal.dto.requests.VeSyncRequestManagedDeviceBypassV2;
 import org.openhab.binding.vesync.internal.dto.responses.VeSyncManagedDeviceBase;
 import org.openhab.binding.vesync.internal.exceptions.AuthenticationException;
 import org.openhab.binding.vesync.internal.exceptions.DeviceUnknownException;
 import org.openhab.core.cache.ExpiringCache;
-import org.openhab.core.i18n.LocaleProvider;
-import org.openhab.core.i18n.TranslationProvider;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.ChannelUID;
@@ -51,10 +47,6 @@ import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.thing.binding.BridgeHandler;
 import org.openhab.core.thing.binding.ThingHandler;
 import org.openhab.core.thing.binding.builder.ThingBuilder;
-import org.openhab.core.types.State;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.FrameworkUtil;
-import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,23 +88,8 @@ public abstract class VeSyncBaseDeviceHandler extends BaseThingHandler {
     @Nullable
     ScheduledFuture<?> readbackPollTask = null;
 
-    private final TranslationProvider translationProvider;
-    private final LocaleProvider localeProvider;
-    private final Bundle bundle;
-
-    private String deviceId = "";
-
-    public VeSyncBaseDeviceHandler(Thing thing, @Reference TranslationProvider translationProvider,
-            @Reference LocaleProvider localeProvider) {
+    public VeSyncBaseDeviceHandler(Thing thing) {
         super(thing);
-        this.translationProvider = translationProvider;
-        this.localeProvider = localeProvider;
-        this.bundle = FrameworkUtil.getBundle(getClass());
-    }
-
-    public String getLocalizedText(String key, @Nullable Object @Nullable... arguments) {
-        String result = translationProvider.getText(bundle, key, key, localeProvider.getLocale(), arguments);
-        return Objects.nonNull(result) ? result : key;
     }
 
     protected @Nullable Channel findChannelById(final String channelGroupId) {
@@ -174,7 +151,12 @@ public abstract class VeSyncBaseDeviceHandler extends BaseThingHandler {
         if (bridgeHandler instanceof VeSyncBridgeHandler veSyncBridgeHandler) {
             @Nullable
             VeSyncManagedDeviceBase metadata = veSyncBridgeHandler.api.getMacLookupMap().get(deviceLookupKey);
-            return metadata != null && "online".equals(metadata.connectionStatus);
+
+            if (metadata == null) {
+                return false;
+            }
+
+            return ("online".equals(metadata.connectionStatus));
         }
         return false;
     }
@@ -192,8 +174,6 @@ public abstract class VeSyncBaseDeviceHandler extends BaseThingHandler {
             }
 
             newProps = getMetadataProperities(metadata);
-
-            deviceId = metadata.getUuid();
 
             // Refresh the device -> protocol mapping
             deviceLookupKey = getValidatedIdString();
@@ -424,26 +404,13 @@ public abstract class VeSyncBaseDeviceHandler extends BaseThingHandler {
     protected final String sendV2BypassControlCommand(final String method,
             final VeSyncRequestManagedDeviceBypassV2.EmptyPayload payload, final boolean readbackDevice) {
         final String result = sendV2BypassCommand(method, payload);
-        if (!EMPTY_STRING.equals(result) && readbackDevice) {
+        if (!result.equals(EMPTY_STRING) && readbackDevice) {
             performReadbackPoll();
         }
         return result;
     }
 
-    protected final String sendV1ControlCommand(final String urlPath, final VeSyncAuthenticatedRequest request) {
-        return sendV1ControlCommand(urlPath, request, true);
-    }
-
-    protected final String sendV1ControlCommand(final String urlPath, final VeSyncAuthenticatedRequest request,
-            final boolean readbackDevice) {
-        final String result = sendV1Command(urlPath, request);
-        if (!EMPTY_STRING.equals(result) && readbackDevice) {
-            performReadbackPoll();
-        }
-        return result;
-    }
-
-    public final String sendV1Command(final String urlPath, final VeSyncAuthenticatedRequest request) {
+    public final String sendV1Command(final String method, final String url, final VeSyncAuthenticatedRequest request) {
         if (ThingStatus.OFFLINE.equals(this.thing.getStatus())) {
             logger.debug("Command blocked as device is offline");
             return EMPTY_STRING;
@@ -455,7 +422,6 @@ public abstract class VeSyncBaseDeviceHandler extends BaseThingHandler {
             }
             VeSyncClient client = getVeSyncClient();
             if (client != null) {
-                final String url = VeSyncProtocolConstants.SERVER_ENDPOINT + "/" + urlPath;
                 return client.reqV2Authorized(url, deviceLookupKey, request);
             } else {
                 throw new DeviceUnknownException("Missing client");
@@ -489,7 +455,6 @@ public abstract class VeSyncBaseDeviceHandler extends BaseThingHandler {
         VeSyncRequestManagedDeviceBypassV2 readReq = new VeSyncRequestManagedDeviceBypassV2();
         readReq.payload.method = method;
         readReq.payload.data = payload;
-        readReq.deviceId = deviceId;
 
         try {
             if (MARKER_INVALID_DEVICE_KEY.equals(deviceLookupKey)) {
@@ -564,22 +529,14 @@ public abstract class VeSyncBaseDeviceHandler extends BaseThingHandler {
         if (deviceType == null) {
             return UNKNOWN;
         }
-
-        // First look for a direct ID match, if no matches are found scan for the matches based on the generation ID.
-        final Optional<VeSyncDeviceMetadata> directIdMatch = metadata.stream()
-                .filter(x -> x.nonStandardIds.contains(deviceType)).findFirst();
-        if (directIdMatch.isPresent()) {
-            return directIdMatch.get();
-        }
-
         final String[] idParts = deviceType.split("-");
         if (idParts.length == 3) {
             if (!deviceProtocolPrefix.equals(idParts[0])) {
                 return UNKNOWN;
             }
         }
-        final List<VeSyncDeviceMetadata> foundMatch = metadata.stream().filter(x -> x.deviceTypeIdMatches(idParts))
-                .toList();
+        List<VeSyncDeviceMetadata> foundMatch = metadata.stream()
+                .filter(x -> x.deviceTypeIdMatches(deviceType, idParts)).collect(Collectors.toList());
         if (foundMatch.size() == 1) {
             return foundMatch.get(0);
         } else {
@@ -589,16 +546,5 @@ public abstract class VeSyncBaseDeviceHandler extends BaseThingHandler {
 
     public VeSyncDeviceMetadata getDeviceFamilyMetadata(final @Nullable String deviceType) {
         return getDeviceFamilyMetadata(deviceType, getDeviceFamilyProtocolPrefix(), getSupportedDeviceMetadata());
-    }
-
-    @Override
-    protected void updateState(final String channelID, final State state) {
-        // In case of any unexpected decoding issues log them, so that the necessary adjustments can
-        // be done. (Not expected but just in case).
-        try {
-            super.updateState(channelID, state);
-        } catch (final Exception e) {
-            logger.warn("Please report issue - could not update channel {} with error {}", channelID, e.toString());
-        }
     }
 }

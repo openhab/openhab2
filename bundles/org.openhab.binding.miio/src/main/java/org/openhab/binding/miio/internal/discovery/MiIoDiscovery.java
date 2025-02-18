@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.miio.internal.Message;
-import org.openhab.binding.miio.internal.MiIoBindingConstants;
 import org.openhab.binding.miio.internal.MiIoDevices;
 import org.openhab.binding.miio.internal.Utils;
 import org.openhab.binding.miio.internal.cloud.CloudConnector;
@@ -353,11 +352,6 @@ public class MiIoDiscovery extends AbstractDiscoveryService {
      *
      */
     private class ReceiverThread extends Thread {
-
-        public ReceiverThread() {
-            super(String.format("OH-binding-%s-%s", MiIoBindingConstants.BINDING_ID, "Receiver"));
-        }
-
         @Override
         public void run() {
             DatagramSocket socket = getSocket();

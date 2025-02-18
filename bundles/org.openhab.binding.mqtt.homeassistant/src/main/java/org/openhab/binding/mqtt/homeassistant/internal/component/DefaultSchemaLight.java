@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -55,15 +55,15 @@ public class DefaultSchemaLight extends Light {
     protected @Nullable ComponentChannel rgbChannel;
     protected @Nullable ComponentChannel xyChannel;
 
-    public DefaultSchemaLight(ComponentFactory.ComponentConfiguration builder) {
-        super(builder);
+    public DefaultSchemaLight(ComponentFactory.ComponentConfiguration builder, boolean newStyleChannels) {
+        super(builder, newStyleChannels);
     }
 
     @Override
     protected void buildChannels() {
         AutoUpdatePolicy autoUpdatePolicy = optimistic ? AutoUpdatePolicy.RECOMMEND : null;
         ComponentChannel localOnOffChannel;
-        localOnOffChannel = onOffChannel = buildChannel(SWITCH_CHANNEL_ID, ComponentChannelType.SWITCH, onOffValue,
+        localOnOffChannel = onOffChannel = buildChannel(ON_OFF_CHANNEL_ID, ComponentChannelType.SWITCH, onOffValue,
                 "On/Off State", this)
                 .stateTopic(channelConfiguration.stateTopic, channelConfiguration.stateValueTemplate)
                 .commandTopic(channelConfiguration.commandTopic, channelConfiguration.isRetain(),
@@ -178,7 +178,7 @@ public class DefaultSchemaLight extends Light {
             hiddenChannels.add(localOnOffChannel);
             channels.put(BRIGHTNESS_CHANNEL_ID, localBrightnessChannel);
         } else {
-            channels.put(SWITCH_CHANNEL_ID, localOnOffChannel);
+            channels.put(ON_OFF_CHANNEL_ID, localOnOffChannel);
         }
     }
 

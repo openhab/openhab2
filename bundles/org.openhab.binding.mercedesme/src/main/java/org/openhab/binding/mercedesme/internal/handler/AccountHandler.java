@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,6 @@
  */
 package org.openhab.binding.mercedesme.internal.handler;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +32,6 @@ import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.openhab.binding.mercedesme.internal.Constants;
 import org.openhab.binding.mercedesme.internal.config.AccountConfiguration;
@@ -59,15 +57,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.daimler.mbcarkit.proto.Client.ClientMessage;
-import com.daimler.mbcarkit.proto.Protos.AcknowledgeAssignedVehicles;
-import com.daimler.mbcarkit.proto.VehicleEvents;
-import com.daimler.mbcarkit.proto.VehicleEvents.AcknowledgeVEPUpdatesByVIN;
-import com.daimler.mbcarkit.proto.VehicleEvents.PushMessage;
 import com.daimler.mbcarkit.proto.VehicleEvents.VEPUpdate;
-import com.daimler.mbcarkit.proto.Vehicleapi.AcknowledgeAppTwinCommandStatusUpdatesByVIN;
 import com.daimler.mbcarkit.proto.Vehicleapi.AppTwinCommandStatusUpdatesByPID;
-import com.daimler.mbcarkit.proto.Vehicleapi.AppTwinCommandStatusUpdatesByVIN;
-import com.daimler.mbcarkit.proto.Vehicleapi.AppTwinPendingCommandsRequest;
 
 /**
  * The {@link AccountHandler} acts as Bridge between MercedesMe Account and the associated vehicles
@@ -91,9 +82,7 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
 
     private Optional<AuthServer> server = Optional.empty();
     private Optional<AuthService> authService = Optional.empty();
-    private Optional<ScheduledFuture<?>> refreshScheduler = Optional.empty();
-    private List<byte[]> eventQueue = new ArrayList<>();
-    private boolean updateRunning = false;
+    private Optional<ScheduledFuture<?>> scheduledFuture = Optional.empty();
 
     private String capabilitiesEndpoint = "/v1/vehicle/%s/capabilities";
     private String commandCapabilitiesEndpoint = "/v1/vehicle/%s/capabilities/commands";
@@ -139,13 +128,13 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE,
                         textKey + " [\"" + thing.getProperties().get("callbackUrl") + "\"]");
             } else {
-                refreshScheduler = Optional.of(scheduler.scheduleWithFixedDelay(this::refresh, 0,
+                scheduledFuture = Optional.of(scheduler.scheduleWithFixedDelay(this::update, 0,
                         config.get().refreshInterval, TimeUnit.MINUTES));
             }
         }
     }
 
-    public void refresh() {
+    public void update() {
         if (server.isPresent()) {
             if (!Constants.NOT_SET.equals(authService.get().getToken())) {
                 ws.run();
@@ -214,13 +203,12 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
             server = Optional.empty();
             Utils.removePort(config.get().callbackPort);
         }
-        refreshScheduler.ifPresent(schedule -> {
+        ws.interrupt();
+        scheduledFuture.ifPresent(schedule -> {
             if (!schedule.isCancelled()) {
                 schedule.cancel(true);
             }
         });
-        ws.interrupt();
-        eventQueue.clear();
     }
 
     /**
@@ -229,7 +217,7 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
     @Override
     public void onAccessTokenResponse(AccessTokenResponse tokenResponse) {
         if (!Constants.NOT_SET.equals(tokenResponse.getAccessToken())) {
-            scheduler.schedule(this::refresh, 2, TimeUnit.SECONDS);
+            scheduler.schedule(this::update, 2, TimeUnit.SECONDS);
         } else if (server.isEmpty()) {
             // server not running - fix first
             String textKey = Constants.STATUS_TEXT_PREFIX + thing.getThingTypeUID().getId()
@@ -272,10 +260,9 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
     public void registerVin(String vin, VehicleHandler handler) {
         discoveryService.vehicleRemove(this, vin, handler.getThing().getThingTypeUID().getId());
         activeVehicleHandlerMap.put(vin, handler);
-        discovery(vin); // update properties for added vehicle
         VEPUpdate updateForVin = vepUpdateMap.get(vin);
         if (updateForVin != null) {
-            handler.enqueueUpdate(updateForVin);
+            handler.distributeContent(updateForVin);
         }
     }
 
@@ -297,96 +284,12 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
         }
     }
 
-    /**
-     * functions for websocket handling
-     */
-
-    public void enqueueMessage(byte[] data) {
-        synchronized (eventQueue) {
-            eventQueue.add(data);
-            scheduler.execute(this::scheduleMessage);
-        }
-    }
-
-    private void scheduleMessage() {
-        byte[] data;
-        synchronized (eventQueue) {
-            while (updateRunning) {
-                try {
-                    eventQueue.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    eventQueue.clear();
-                    return;
-                }
-            }
-            if (!eventQueue.isEmpty()) {
-                data = eventQueue.remove(0);
-            } else {
-                return;
-            }
-            updateRunning = true;
-        }
-        try {
-            handleMessage(data);
-        } finally {
-            synchronized (eventQueue) {
-                updateRunning = false;
-                eventQueue.notifyAll();
-            }
-        }
-    }
-
-    private void handleMessage(byte[] array) {
-        try {
-            PushMessage pm = VehicleEvents.PushMessage.parseFrom(array);
-            if (pm.hasVepUpdates()) {
-                boolean distributed = distributeVepUpdates(pm.getVepUpdates().getUpdatesMap());
-                if (distributed) {
-                    AcknowledgeVEPUpdatesByVIN ack = AcknowledgeVEPUpdatesByVIN.newBuilder()
-                            .setSequenceNumber(pm.getVepUpdates().getSequenceNumber()).build();
-                    ClientMessage cm = ClientMessage.newBuilder().setAcknowledgeVepUpdatesByVin(ack).build();
-                    ws.sendAcknowledgeMessage(cm);
-                }
-            } else if (pm.hasAssignedVehicles()) {
-                for (int i = 0; i < pm.getAssignedVehicles().getVinsCount(); i++) {
-                    String vin = pm.getAssignedVehicles().getVins(i);
-                    discovery(vin);
-                }
-                AcknowledgeAssignedVehicles ack = AcknowledgeAssignedVehicles.newBuilder().build();
-                ClientMessage cm = ClientMessage.newBuilder().setAcknowledgeAssignedVehicles(ack).build();
-                ws.sendAcknowledgeMessage(cm);
-            } else if (pm.hasApptwinCommandStatusUpdatesByVin()) {
-                AppTwinCommandStatusUpdatesByVIN csubv = pm.getApptwinCommandStatusUpdatesByVin();
-                commandStatusUpdate(csubv.getUpdatesByVinMap());
-                AcknowledgeAppTwinCommandStatusUpdatesByVIN ack = AcknowledgeAppTwinCommandStatusUpdatesByVIN
-                        .newBuilder().setSequenceNumber(csubv.getSequenceNumber()).build();
-                ClientMessage cm = ClientMessage.newBuilder().setAcknowledgeApptwinCommandStatusUpdateByVin(ack)
-                        .build();
-                ws.sendAcknowledgeMessage(cm);
-            } else if (pm.hasApptwinPendingCommandRequest()) {
-                AppTwinPendingCommandsRequest pending = pm.getApptwinPendingCommandRequest();
-                if (!pending.getAllFields().isEmpty()) {
-                    logger.trace("Pending Command {}", pending.getAllFields());
-                }
-            } else if (pm.hasDebugMessage()) {
-                logger.trace("MB Debug Message: {}", pm.getDebugMessage().getMessage());
-            } else {
-                logger.trace("MB Message: {} not handled", pm.getAllFields());
-            }
-        } catch (IOException e) {
-            logger.trace("IOException decoding message {}", e.getMessage());
-        } catch (Error err) {
-            logger.debug("Error caught {}", err.getMessage());
-        }
-    }
-
     public boolean distributeVepUpdates(Map<String, VEPUpdate> map) {
         List<String> notFoundList = new ArrayList<>();
         map.forEach((key, value) -> {
             VehicleHandler h = activeVehicleHandlerMap.get(key);
             if (h != null) {
-                h.enqueueUpdate(value);
+                h.distributeContent(value);
             } else {
                 if (value.getFullUpdate()) {
                     vepUpdateMap.put(key, value);
@@ -395,7 +298,6 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
             }
         });
         notFoundList.forEach(vin -> {
-            discovery(vin); // add vehicle to discovery
             logger.trace("No VehicleHandler available for VIN {}", vin);
         });
         return notFoundList.isEmpty();
@@ -412,24 +314,17 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
         });
     }
 
-    /**
-     * Updates properties for existing handlers or delivers discovery result
-     *
-     * @param vin of discovered vehicle
-     */
     @SuppressWarnings("null")
     public void discovery(String vin) {
         if (activeVehicleHandlerMap.containsKey(vin)) {
             VehicleHandler vh = activeVehicleHandlerMap.get(vin);
-            Map<String, String> properties = getStringCapabilities(vin);
-            properties.putAll(vh.getThing().getProperties());
-            vh.getThing().setProperties(properties);
+            if (vh.getThing().getProperties().isEmpty()) {
+                vh.getThing().setProperties(getStringCapabilities(vin));
+            }
         } else {
             if (!capabilitiesMap.containsKey(vin)) {
                 // only report new discovery if capabilities aren't discovered yet
-                Map<String, Object> discoveryProperties = getCapabilities(vin);
-                discoveryProperties.put("vin", vin);
-                discoveryService.vehicleDiscovered(this, vin, discoveryProperties);
+                discoveryService.vehicleDiscovered(this, vin, getCapabilities(vin));
             }
         }
     }
@@ -522,7 +417,7 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
             // store in cache
             capabilitiesMap.put(vin, featureMap);
             return featureMap;
-        } catch (InterruptedException | TimeoutException | ExecutionException | JSONException e) {
+        } catch (InterruptedException | TimeoutException | ExecutionException e) {
             logger.trace("Error retrieving capabilities: {}", e.getMessage());
             featureMap.clear();
         }
@@ -533,7 +428,7 @@ public class AccountHandler extends BaseBridgeHandler implements AccessTokenRefr
         if (cm != null) {
             ws.setCommand(cm);
         }
-        scheduler.schedule(this::refresh, 2, TimeUnit.SECONDS);
+        scheduler.schedule(this::update, 2, TimeUnit.SECONDS);
     }
 
     public void keepAlive(boolean b) {

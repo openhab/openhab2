@@ -3,6 +3,7 @@ package proto;
 
 import "acp.proto";
 import "google/protobuf/struct.proto";
+//import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "gogo.proto";
 
 option (gogoproto.goproto_enum_prefix_all) = true;

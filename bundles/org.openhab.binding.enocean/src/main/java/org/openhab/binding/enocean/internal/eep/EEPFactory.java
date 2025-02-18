@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -46,11 +46,14 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class EEPFactory {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(EEPFactory.class);
+    private static final Logger logger = LoggerFactory.getLogger(EEPFactory.class);
 
     public static EEP createEEP(EEPType eepType) {
         try {
             Class<? extends EEP> cl = eepType.getEEPClass();
+            if (cl == null) {
+                throw new IllegalArgumentException("Message " + eepType + " not implemented");
+            }
             return cl.getDeclaredConstructor().newInstance();
         } catch (IllegalAccessException | InstantiationException | IllegalArgumentException | InvocationTargetException
                 | NoSuchMethodException | SecurityException e) {
@@ -61,10 +64,13 @@ public class EEPFactory {
     public static EEP buildEEP(EEPType eepType, ERP1Message packet) {
         try {
             Class<? extends EEP> cl = eepType.getEEPClass();
+            if (cl == null) {
+                throw new IllegalArgumentException("Message " + eepType + " not implemented");
+            }
             return cl.getConstructor(ERP1Message.class).newInstance(packet);
         } catch (IllegalAccessException | InstantiationException | IllegalArgumentException | InvocationTargetException
                 | NoSuchMethodException | SecurityException e) {
-            LOGGER.error("Cannot instantiate EEP {}-{}-{}: {}",
+            logger.error("Cannot instantiate EEP {}-{}-{}: {}",
                     HexUtils.bytesToHex(new byte[] { eepType.getRORG().getValue() }),
                     HexUtils.bytesToHex(new byte[] { (byte) eepType.getFunc() }),
                     HexUtils.bytesToHex(new byte[] { (byte) eepType.getType() }), e.getMessage());
@@ -74,16 +80,16 @@ public class EEPFactory {
     }
 
     private static @Nullable EEPType getGenericEEPTypeFor(byte rorg) {
-        LOGGER.info("Received unsupported EEP teach in, trying to fallback to generic thing");
+        logger.info("Received unsupported EEP teach in, trying to fallback to generic thing");
         RORG r = RORG.getRORG(rorg);
         if (r == RORG._4BS) {
-            LOGGER.info("Fallback to 4BS generic thing");
+            logger.info("Fallback to 4BS generic thing");
             return EEPType.Generic4BS;
         } else if (r == RORG.VLD) {
-            LOGGER.info("Fallback to VLD generic thing");
+            logger.info("Fallback to VLD generic thing");
             return EEPType.GenericVLD;
         } else {
-            LOGGER.info("Fallback not possible");
+            logger.info("Fallback not possible");
             return null;
         }
     }
@@ -149,7 +155,7 @@ public class EEPFactory {
             case _4BS: {
                 int db0 = msg.getPayload()[4];
                 if ((db0 & _4BSMessage.LRN_TYPE_MASK) == 0) { // Variation 1
-                    LOGGER.info("Received 4BS Teach In variation 1 without EEP, fallback to generic thing");
+                    logger.info("Received 4BS Teach In variation 1 without EEP, fallback to generic thing");
                     return buildEEP(EEPType.Generic4BS, msg);
                 }
 
@@ -161,7 +167,7 @@ public class EEPFactory {
                 int type = ((db3 & 0b11) << 5) + ((db2 & 0xFF) >>> 3);
                 int manufId = ((db2 & 0b111) << 8) + (db1 & 0xff);
 
-                LOGGER.debug("Received 4BS Teach In with EEP A5-{}-{} and manufacturerID {}",
+                logger.debug("Received 4BS Teach In with EEP A5-{}-{} and manufacturerID {}",
                         HexUtils.bytesToHex(new byte[] { (byte) func }),
                         HexUtils.bytesToHex(new byte[] { (byte) type }),
                         HexUtils.bytesToHex(new byte[] { (byte) manufId }));
@@ -223,7 +229,7 @@ public class EEPFactory {
 
         byte[] senderId = Arrays.copyOfRange(payload, 12, 12 + 4);
 
-        LOGGER.debug("Received SMACK Teach In with EEP {}-{}-{} and manufacturerID {}",
+        logger.debug("Received SMACK Teach In with EEP {}-{}-{} and manufacturerID {}",
                 HexUtils.bytesToHex(new byte[] { (byte) rorg }), HexUtils.bytesToHex(new byte[] { (byte) func }),
                 HexUtils.bytesToHex(new byte[] { (byte) type }), HexUtils.bytesToHex(new byte[] { (byte) manufId }));
 
@@ -232,7 +238,7 @@ public class EEPFactory {
             eepType = getGenericEEPTypeFor(rorg);
         }
 
-        return eepType == null ? null : createEEP(eepType).setSenderId(senderId);
+        return (eepType == null) ? null : createEEP(eepType).setSenderId(senderId);
     }
 
     public static @Nullable EEP buildResponseEEPFromTeachInERP1(ERP1Message msg, byte[] senderId, boolean teachIn) {
@@ -257,22 +263,22 @@ public class EEPFactory {
 
         byte priority = event.getPayload()[1];
         if ((priority & 0b1001) == 0b1001) {
-            LOGGER.debug("gtw is already postmaster");
+            logger.debug("gtw is already postmaster");
             if (sendTeachOuts) {
-                LOGGER.debug("Repeated learn is not allow hence send teach out");
+                logger.debug("Repeated learn is not allow hence send teach out");
                 response.setTeachOutResponse();
             } else {
-                LOGGER.debug("Send a repeated learn in");
+                logger.debug("Send a repeated learn in");
                 response.setRepeatedTeachInResponse();
             }
         } else if ((priority & 0b100) == 0) {
-            LOGGER.debug("no place for further mailbox");
+            logger.debug("no place for further mailbox");
             response.setNoPlaceForFurtherMailbox();
         } else if ((priority & 0b10) == 0) {
-            LOGGER.debug("rssi is not good enough");
+            logger.debug("rssi is not good enough");
             response.setBadRSSI();
         } else if ((priority & 0b1) == 0b1) {
-            LOGGER.debug("gtw is candidate for postmaster => teach in");
+            logger.debug("gtw is candidate for postmaster => teach in");
             response.setTeachIn();
         }
 

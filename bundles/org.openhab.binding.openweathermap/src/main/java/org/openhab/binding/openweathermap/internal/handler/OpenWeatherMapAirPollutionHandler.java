@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -26,6 +26,7 @@ import org.openhab.binding.openweathermap.internal.connection.OpenWeatherMapConn
 import org.openhab.binding.openweathermap.internal.dto.OpenWeatherMapJsonAirPollutionData;
 import org.openhab.core.i18n.CommunicationException;
 import org.openhab.core.i18n.ConfigurationException;
+import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.unit.Units;
 import org.openhab.core.thing.Channel;
@@ -62,8 +63,8 @@ public class OpenWeatherMapAirPollutionHandler extends AbstractOpenWeatherMapHan
     private @Nullable OpenWeatherMapJsonAirPollutionData airPollutionData;
     private @Nullable OpenWeatherMapJsonAirPollutionData airPollutionForecastData;
 
-    public OpenWeatherMapAirPollutionHandler(Thing thing) {
-        super(thing);
+    public OpenWeatherMapAirPollutionHandler(Thing thing, final TimeZoneProvider timeZoneProvider) {
+        super(thing, timeZoneProvider);
     }
 
     @Override

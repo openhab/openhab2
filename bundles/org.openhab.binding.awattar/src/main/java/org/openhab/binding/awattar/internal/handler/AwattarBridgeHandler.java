@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,11 +16,12 @@ import static org.openhab.binding.awattar.internal.AwattarBindingConstants.CHANN
 import static org.openhab.binding.awattar.internal.AwattarBindingConstants.CHANNEL_TOTAL_NET;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.SortedSet;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.ToDoubleFunction;
+import java.util.function.Function;
 
 import javax.measure.Unit;
 
@@ -31,7 +32,7 @@ import org.openhab.binding.awattar.internal.AwattarBridgeConfiguration;
 import org.openhab.binding.awattar.internal.AwattarPrice;
 import org.openhab.binding.awattar.internal.api.AwattarApi;
 import org.openhab.binding.awattar.internal.api.AwattarApi.AwattarApiException;
-import org.openhab.binding.awattar.internal.dto.AwattarTimeProvider;
+import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.library.types.QuantityType;
 import org.openhab.core.library.unit.CurrencyUnits;
 import org.openhab.core.thing.Bridge;
@@ -64,20 +65,20 @@ public class AwattarBridgeHandler extends BaseBridgeHandler {
 
     private final Logger logger = LoggerFactory.getLogger(AwattarBridgeHandler.class);
     private final HttpClient httpClient;
-    private final AwattarTimeProvider timeProvider;
 
     private @Nullable ScheduledFuture<?> dataRefresher;
     private Instant lastRefresh = Instant.EPOCH;
 
     // This cache stores price data for up to two days
     private @Nullable SortedSet<AwattarPrice> prices;
+    private ZoneId zone;
 
     private @Nullable AwattarApi awattarApi;
 
-    public AwattarBridgeHandler(Bridge thing, HttpClient httpClient, AwattarTimeProvider timeProvider) {
+    public AwattarBridgeHandler(Bridge thing, HttpClient httpClient, TimeZoneProvider timeZoneProvider) {
         super(thing);
         this.httpClient = httpClient;
-        this.timeProvider = timeProvider;
+        zone = timeZoneProvider.getTimeZone();
     }
 
     @Override
@@ -86,7 +87,7 @@ public class AwattarBridgeHandler extends BaseBridgeHandler {
         AwattarBridgeConfiguration config = getConfigAs(AwattarBridgeConfiguration.class);
 
         try {
-            awattarApi = new AwattarApi(httpClient, timeProvider, config);
+            awattarApi = new AwattarApi(httpClient, zone, config);
 
             dataRefresher = scheduler.scheduleWithFixedDelay(this::refreshIfNeeded, 0, DATA_REFRESH_INTERVAL * 1000L,
                     TimeUnit.MILLISECONDS);
@@ -153,15 +154,17 @@ public class AwattarBridgeHandler extends BaseBridgeHandler {
         return priceUnit;
     }
 
-    private void createAndSendTimeSeries(String channelId, ToDoubleFunction<AwattarPrice> valueFunction) {
+    private void createAndSendTimeSeries(String channelId, Function<AwattarPrice, Double> valueFunction) {
         SortedSet<AwattarPrice> locPrices = getPrices();
         Unit<?> priceUnit = getPriceUnit();
         if (locPrices == null) {
             return;
         }
         TimeSeries timeSeries = new TimeSeries(TimeSeries.Policy.REPLACE);
-        locPrices.forEach(p -> timeSeries.add(Instant.ofEpochMilli(p.timerange().start()),
-                new QuantityType<>(valueFunction.applyAsDouble(p) / 100.0, priceUnit)));
+        locPrices.forEach(p -> {
+            timeSeries.add(Instant.ofEpochMilli(p.timerange().start()),
+                    new QuantityType<>(valueFunction.apply(p) / 100.0, priceUnit));
+        });
         sendTimeSeries(channelId, timeSeries);
     }
 
@@ -183,13 +186,11 @@ public class AwattarBridgeHandler extends BaseBridgeHandler {
     private boolean needRefresh() {
         // if the thing is offline, we need to refresh
         if (getThing().getStatus() != ThingStatus.ONLINE) {
-            lastRefresh = timeProvider.getInstantNow();
             return true;
         }
 
         // if the local cache is empty, we need to refresh
         if (prices == null) {
-            lastRefresh = timeProvider.getInstantNow();
             return true;
         }
 
@@ -199,21 +200,25 @@ public class AwattarBridgeHandler extends BaseBridgeHandler {
 
         // do not refresh before 15:00, since the prices for the next day are available
         // only after 14:00
-        ZonedDateTime now = timeProvider.getZonedDateTimeNow();
+        ZonedDateTime now = ZonedDateTime.now(zone);
         if (now.getHour() < 15) {
             return false;
         }
 
-        // refresh at 15:00, 18:00 and 21:00 if the last refresh was more than an hour ago
+        // refresh then every 3 hours, if the last refresh was more than an hour ago
         if (now.getHour() % 3 == 0 && lastRefresh.getEpochSecond() < now.minusHours(1).toEpochSecond()) {
             // update the last refresh time
-            lastRefresh = timeProvider.getInstantNow();
+            lastRefresh = Instant.now();
 
             // return true to indicate an update is needed
             return true;
         }
 
         return false;
+    }
+
+    public ZoneId getTimeZone() {
+        return zone;
     }
 
     @Nullable
@@ -234,20 +239,8 @@ public class AwattarBridgeHandler extends BaseBridgeHandler {
 
     public boolean containsPriceFor(long timestamp) {
         SortedSet<AwattarPrice> localPrices = getPrices();
-        if (localPrices == null) {
-            return false;
-        }
-        return new TimeRange(localPrices.first().timerange().start(), localPrices.last().timerange().end())
-                .contains(timestamp);
-    }
-
-    public boolean containsPriceFor(TimeRange timeRange) {
-        SortedSet<AwattarPrice> localPrices = getPrices();
-        if (localPrices == null) {
-            return false;
-        }
-        return new TimeRange(localPrices.first().timerange().start(), localPrices.last().timerange().end())
-                .contains(timeRange);
+        return localPrices != null && localPrices.first().timerange().start() <= timestamp
+                && localPrices.last().timerange().end() > timestamp;
     }
 
     @Override
@@ -256,7 +249,6 @@ public class AwattarBridgeHandler extends BaseBridgeHandler {
             switch (channelUID.getId()) {
                 case CHANNEL_MARKET_NET -> createAndSendTimeSeries(CHANNEL_MARKET_NET, AwattarPrice::netPrice);
                 case CHANNEL_TOTAL_NET -> createAndSendTimeSeries(CHANNEL_TOTAL_NET, AwattarPrice::netTotal);
-                default -> logger.warn("Channel {} not supported", channelUID.getId());
             }
         }
     }

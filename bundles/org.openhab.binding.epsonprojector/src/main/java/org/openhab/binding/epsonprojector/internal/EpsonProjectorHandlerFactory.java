@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -38,7 +38,6 @@ import org.osgi.service.component.annotations.Reference;
 @Component(configurationPid = "binding.epsonprojector", service = ThingHandlerFactory.class)
 public class EpsonProjectorHandlerFactory extends BaseThingHandlerFactory {
     private final SerialPortManager serialPortManager;
-    private final EpsonStateDescriptionOptionProvider stateDescriptionProvider;
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
@@ -46,10 +45,8 @@ public class EpsonProjectorHandlerFactory extends BaseThingHandlerFactory {
     }
 
     @Activate
-    public EpsonProjectorHandlerFactory(final @Reference SerialPortManager serialPortManager,
-            final @Reference EpsonStateDescriptionOptionProvider provider) {
+    public EpsonProjectorHandlerFactory(final @Reference SerialPortManager serialPortManager) {
         this.serialPortManager = serialPortManager;
-        this.stateDescriptionProvider = provider;
     }
 
     @Override
@@ -57,7 +54,7 @@ public class EpsonProjectorHandlerFactory extends BaseThingHandlerFactory {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
 
         if (THING_TYPE_PROJECTOR_SERIAL.equals(thingTypeUID) || THING_TYPE_PROJECTOR_TCP.equals(thingTypeUID)) {
-            return new EpsonProjectorHandler(thing, serialPortManager, stateDescriptionProvider);
+            return new EpsonProjectorHandler(thing, serialPortManager);
         }
 
         return null;

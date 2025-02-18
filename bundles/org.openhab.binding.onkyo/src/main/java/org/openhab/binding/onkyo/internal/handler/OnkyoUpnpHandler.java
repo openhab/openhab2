@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.openhab.binding.onkyo.internal.OnkyoBindingConstants;
-import org.openhab.core.audio.AudioStream;
 import org.openhab.core.io.transport.upnp.UpnpIOParticipant;
 import org.openhab.core.io.transport.upnp.UpnpIOService;
 import org.openhab.core.library.types.StringType;
@@ -36,9 +35,7 @@ public abstract class OnkyoUpnpHandler extends BaseThingHandler implements UpnpI
 
     private final Logger logger = LoggerFactory.getLogger(OnkyoUpnpHandler.class);
 
-    private final UpnpIOService service;
-
-    private final URIMetaDataProcessor uriMetaDataProcessor = new URIMetaDataProcessor();
+    private UpnpIOService service;
 
     public OnkyoUpnpHandler(Thing thing, UpnpIOService upnpIOService) {
         super(thing);
@@ -48,7 +45,7 @@ public abstract class OnkyoUpnpHandler extends BaseThingHandler implements UpnpI
     protected void handlePlayUri(Command command) {
         if (command instanceof StringType) {
             try {
-                playMedia(command.toString(), null);
+                playMedia(command.toString());
 
             } catch (IllegalStateException e) {
                 logger.warn("Cannot play URI ({})", e.getMessage());
@@ -56,7 +53,7 @@ public abstract class OnkyoUpnpHandler extends BaseThingHandler implements UpnpI
         }
     }
 
-    public void playMedia(String url, AudioStream audioStream) {
+    public void playMedia(String url) {
         stop();
         removeAllTracksFromQueue();
 
@@ -64,7 +61,7 @@ public abstract class OnkyoUpnpHandler extends BaseThingHandler implements UpnpI
             url = "x-file-cifs:" + url;
         }
 
-        setCurrentURI(url, uriMetaDataProcessor.generate(url, audioStream));
+        setCurrentURI(url, "");
 
         play();
     }

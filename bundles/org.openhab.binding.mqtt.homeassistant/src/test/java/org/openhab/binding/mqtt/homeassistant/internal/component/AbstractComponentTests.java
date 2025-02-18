@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,7 +19,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -42,14 +41,11 @@ import org.openhab.binding.mqtt.homeassistant.internal.HaID;
 import org.openhab.binding.mqtt.homeassistant.internal.HandlerConfiguration;
 import org.openhab.binding.mqtt.homeassistant.internal.config.dto.AbstractChannelConfiguration;
 import org.openhab.binding.mqtt.homeassistant.internal.handler.HomeAssistantThingHandler;
-import org.openhab.core.i18n.UnitProvider;
 import org.openhab.core.library.types.HSBType;
-import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatusInfo;
 import org.openhab.core.thing.binding.ThingHandlerCallback;
 import org.openhab.core.thing.type.AutoUpdatePolicy;
-import org.openhab.core.thing.type.ChannelKind;
 import org.openhab.core.thing.type.ChannelTypeRegistry;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
@@ -68,7 +64,6 @@ public abstract class AbstractComponentTests extends AbstractHomeAssistantTests 
 
     private @Mock @NonNullByDefault({}) ThingHandlerCallback callbackMock;
     private @NonNullByDefault({}) LatchThingHandler thingHandler;
-    protected @Mock @NonNullByDefault({}) UnitProvider unitProvider;
 
     @BeforeEach
     public void setupThingHandler() {
@@ -86,7 +81,7 @@ public abstract class AbstractComponentTests extends AbstractHomeAssistantTests 
         when(callbackMock.getBridge(eq(BRIDGE_UID))).thenReturn(bridgeThing);
 
         thingHandler = new LatchThingHandler(haThing, channelTypeProvider, stateDescriptionProvider,
-                channelTypeRegistry, unitProvider, SUBSCRIBE_TIMEOUT, ATTRIBUTE_RECEIVE_TIMEOUT);
+                channelTypeRegistry, SUBSCRIBE_TIMEOUT, ATTRIBUTE_RECEIVE_TIMEOUT);
         thingHandler.setConnection(bridgeConnection);
         thingHandler.setCallback(callbackMock);
         thingHandler = spy(thingHandler);
@@ -138,32 +133,6 @@ public abstract class AbstractComponentTests extends AbstractHomeAssistantTests 
             assertThat(e.getMessage(), false);
         }
         return Objects.requireNonNull(thingHandler.getDiscoveredComponent());
-    }
-
-    /**
-     * Simulate linking an item to a channel, so that the handler knows it should subscribe to the relevant topics
-     *
-     * @param component component
-     * @param channelId channel
-     */
-    protected void linkChannel(AbstractComponent<@NonNull ? extends AbstractChannelConfiguration> component,
-            String channelId) {
-        var stateChannel = Objects.requireNonNull(component.getChannel(channelId));
-        thingHandler.linkChannel(stateChannel.getChannel().getUID());
-    }
-
-    /**
-     * Simulate linking an item to a all channels of a component, so that the handler knows it should subscribe to the
-     * relevant topics
-     *
-     * @param component component
-     */
-    protected void linkAllChannels(AbstractComponent<@NonNull ? extends AbstractChannelConfiguration> component) {
-        component.getChannels().forEach(c -> {
-            if (c.getKind().equals(ChannelKind.STATE)) {
-                thingHandler.linkChannel(c.getUID());
-            }
-        });
     }
 
     /**
@@ -254,22 +223,18 @@ public abstract class AbstractComponentTests extends AbstractHomeAssistantTests 
         }
     }
 
+    protected void spyOnChannelUpdates(AbstractComponent<@NonNull ? extends AbstractChannelConfiguration> component,
+            String channelId) {
+        // It's already thingHandler, but not the spy version
+        component.getChannel(channelId).getState().setChannelStateUpdateListener(thingHandler);
+    }
+
     /**
      * Assert a channel triggers
      */
     protected void assertTriggered(AbstractComponent<@NonNull ? extends AbstractChannelConfiguration> component,
             String channelId, String trigger) {
-        verify(callbackMock).channelTriggered(eq(haThing), eq(component.getChannel(channelId).getChannel().getUID()),
-                eq(trigger));
-    }
-
-    /**
-     * Assert a channel does not triggers=
-     */
-    protected void assertNotTriggered(AbstractComponent<@NonNull ? extends AbstractChannelConfiguration> component,
-            String channelId, String trigger) {
-        verify(callbackMock, never()).channelTriggered(eq(haThing),
-                eq(component.getChannel(channelId).getChannel().getUID()), eq(trigger));
+        verify(thingHandler).triggerChannel(eq(component.getChannel(channelId).getChannel().getUID()), eq(trigger));
     }
 
     /**
@@ -357,15 +322,14 @@ public abstract class AbstractComponentTests extends AbstractHomeAssistantTests 
     }
 
     protected static class LatchThingHandler extends HomeAssistantThingHandler {
-        private final Set<ChannelUID> linkedChannels = new HashSet<>();
         private @Nullable CountDownLatch latch;
         private @Nullable AbstractComponent<@NonNull ? extends AbstractChannelConfiguration> discoveredComponent;
 
         public LatchThingHandler(Thing thing, MqttChannelTypeProvider channelTypeProvider,
                 MqttChannelStateDescriptionProvider stateDescriptionProvider, ChannelTypeRegistry channelTypeRegistry,
-                UnitProvider unitProvider, int subscribeTimeout, int attributeReceiveTimeout) {
+                int subscribeTimeout, int attributeReceiveTimeout) {
             super(thing, channelTypeProvider, stateDescriptionProvider, channelTypeRegistry, new Jinjava(),
-                    unitProvider, subscribeTimeout, attributeReceiveTimeout);
+                    subscribeTimeout, attributeReceiveTimeout);
         }
 
         @Override
@@ -385,16 +349,6 @@ public abstract class AbstractComponentTests extends AbstractHomeAssistantTests 
 
         public @Nullable AbstractComponent<@NonNull ? extends AbstractChannelConfiguration> getDiscoveredComponent() {
             return discoveredComponent;
-        }
-
-        public void linkChannel(ChannelUID channelUID) {
-            linkedChannels.add(channelUID);
-            channelLinked(channelUID);
-        }
-
-        @Override
-        protected boolean isLinked(ChannelUID channelUID) {
-            return linkedChannels.contains(channelUID);
         }
     }
 }

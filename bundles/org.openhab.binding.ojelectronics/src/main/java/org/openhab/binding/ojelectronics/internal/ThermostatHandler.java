@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -212,7 +212,7 @@ public class ThermostatHandler extends BaseThingHandler {
 
     private void updateBoostEndTime(Command command) {
         if (command instanceof DateTimeType dateTimeCommand) {
-            getCurrentThermostat().boostEndTime = Date.from(dateTimeCommand.getInstant());
+            getCurrentThermostat().boostEndTime = Date.from(dateTimeCommand.getZonedDateTime().toInstant());
         } else {
             logger.warn("Unable to set value {}", command);
         }
@@ -225,7 +225,8 @@ public class ThermostatHandler extends BaseThingHandler {
 
     private void updateComfortEndTime(Command command) {
         if (command instanceof DateTimeType dateTimeCommand) {
-            getCurrentThermostat().comfortEndTime = Objects.requireNonNull(Date.from(dateTimeCommand.getInstant()));
+            getCurrentThermostat().comfortEndTime = Objects
+                    .requireNonNull(Date.from(dateTimeCommand.getZonedDateTime().toInstant()));
         } else {
             logger.warn("Unable to set value {}", command);
         }
@@ -328,7 +329,7 @@ public class ThermostatHandler extends BaseThingHandler {
     private void updateVacationBeginDay(Command command) {
         if (command instanceof DateTimeType dateTimeCommand) {
             getCurrentThermostat().vacationBeginDay = Date
-                    .from(dateTimeCommand.getInstant().truncatedTo(ChronoUnit.DAYS));
+                    .from(dateTimeCommand.getZonedDateTime().toInstant().truncatedTo(ChronoUnit.DAYS));
         } else {
             logger.warn("Unable to set value {}", command);
         }
@@ -344,7 +345,7 @@ public class ThermostatHandler extends BaseThingHandler {
     private void updateVacationEndDay(Command command) {
         if (command instanceof DateTimeType dateTimeCommand) {
             getCurrentThermostat().vacationEndDay = Date
-                    .from(dateTimeCommand.getInstant().truncatedTo(ChronoUnit.DAYS));
+                    .from(dateTimeCommand.getZonedDateTime().toInstant().truncatedTo(ChronoUnit.DAYS));
         } else {
             logger.warn("Unable to set value {}", command);
         }

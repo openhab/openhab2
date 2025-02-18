@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,6 +12,7 @@
  */
 package org.openhab.persistence.mongodb.internal;
 
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -286,7 +287,8 @@ public class MongoDBPersistenceService implements ModifiablePersistenceService {
 
                 final State state = MongoDBTypeConversions.getStateFromDocument(item, obj);
 
-                items.add(new MongoDBItem(realItemName, state, obj.getDate(MongoDBFields.FIELD_TIMESTAMP).toInstant()));
+                items.add(new MongoDBItem(realItemName, state, ZonedDateTime
+                        .ofInstant(obj.getDate(MongoDBFields.FIELD_TIMESTAMP).toInstant(), ZoneId.systemDefault())));
             }
         } finally {
             if (cursor != null) {

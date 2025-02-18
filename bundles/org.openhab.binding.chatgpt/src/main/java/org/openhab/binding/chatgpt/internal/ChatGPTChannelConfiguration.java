@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,13 +22,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class ChatGPTChannelConfiguration {
 
-    public String model = "gpt-4o-mini";
+    public String model = "gpt-3.5-turbo";
 
-    public Double temperature = 0.5;
-
-    public Double topP = 1.0;
+    public float temperature = 0.5f;
 
     public String systemMessage = "";
 
-    public int maxTokens = 500;
+    int maxTokens = 500;
 }

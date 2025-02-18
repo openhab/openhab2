@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,12 +16,10 @@ import java.sql.Date;
 import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.insteon.internal.InsteonBindingConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,16 +45,16 @@ public class LegacyPollManager {
     private static final long MIN_MSEC_BETWEEN_POLLS = 2000L;
 
     private final Logger logger = LoggerFactory.getLogger(LegacyPollManager.class);
+    private static LegacyPollManager poller = new LegacyPollManager(); // for singleton
 
-    private ScheduledExecutorService scheduler;
-    private @Nullable ScheduledFuture<?> job;
+    private @Nullable Thread pollThread = null;
     private TreeSet<PQEntry> pollQueue = new TreeSet<>();
+    private boolean keepRunning = true;
 
     /**
      * Constructor
      */
-    public LegacyPollManager(ScheduledExecutorService scheduler) {
-        this.scheduler = scheduler;
+    private LegacyPollManager() {
     }
 
     /**
@@ -106,8 +104,17 @@ public class LegacyPollManager {
      * Starts the poller thread
      */
     public void start() {
-        if (job == null) {
-            job = scheduler.schedule(new PollQueueReader(), 0, TimeUnit.SECONDS);
+        if (pollThread == null) {
+            pollThread = new Thread(new PollQueueReader());
+            setParamsAndStart(pollThread);
+        }
+    }
+
+    private void setParamsAndStart(@Nullable Thread thread) {
+        if (thread != null) {
+            thread.setName("OH-binding-" + InsteonBindingConstants.BINDING_ID + "-pollQueueReader");
+            thread.setDaemon(true);
+            thread.start();
         }
     }
 
@@ -115,10 +122,21 @@ public class LegacyPollManager {
      * Stops the poller thread
      */
     public void stop() {
-        ScheduledFuture<?> job = this.job;
-        if (job != null) {
-            job.cancel(true);
-            this.job = null;
+        logger.debug("stopping poller!");
+        synchronized (pollQueue) {
+            pollQueue.clear();
+            keepRunning = false;
+            pollQueue.notify();
+        }
+        try {
+            Thread pollThread = this.pollThread;
+            if (pollThread != null) {
+                pollThread.join();
+                this.pollThread = null;
+            }
+            keepRunning = true;
+        } catch (InterruptedException e) {
+            logger.debug("got interrupted on exit: {}", e.getMessage());
         }
     }
 
@@ -186,17 +204,18 @@ public class LegacyPollManager {
     private class PollQueueReader implements Runnable {
         @Override
         public void run() {
-            logger.debug("starting poll queue thread");
-            try {
-                while (!Thread.interrupted()) {
-                    synchronized (pollQueue) {
+            logger.debug("starting poll thread.");
+            synchronized (pollQueue) {
+                while (keepRunning) {
+                    try {
                         readPollQueue();
+                    } catch (InterruptedException e) {
+                        logger.warn("poll queue reader thread interrupted!");
+                        break;
                     }
                 }
-            } catch (InterruptedException e) {
-                logger.trace("poll queue thread interrupted!");
             }
-            logger.debug("exiting poll queue thread!");
+            logger.debug("poll thread exiting");
         }
 
         /**
@@ -206,9 +225,10 @@ public class LegacyPollManager {
          * @throws InterruptedException
          */
         private void readPollQueue() throws InterruptedException {
-            if (pollQueue.isEmpty()) {
-                logger.trace("waiting for poll queue to fill");
+            while (pollQueue.isEmpty() && keepRunning) {
                 pollQueue.wait();
+            }
+            if (!keepRunning) {
                 return;
             }
             // something is in the queue
@@ -276,5 +296,15 @@ public class LegacyPollManager {
         public String toString() {
             return device.getAddress().toString() + "/" + String.format("%tc", new Date(expirationTime));
         }
+    }
+
+    /**
+     * Singleton pattern instance() method
+     *
+     * @return the poller instance
+     */
+    public static synchronized LegacyPollManager instance() {
+        poller.start();
+        return poller;
     }
 }

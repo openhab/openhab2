@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,11 +20,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.jetty.client.HttpClient;
 import org.openhab.binding.insteon.internal.config.InsteonLegacyNetworkConfiguration;
 import org.openhab.binding.insteon.internal.device.InsteonAddress;
-import org.openhab.binding.insteon.internal.device.LegacyPollManager;
-import org.openhab.binding.insteon.internal.device.LegacyRequestManager;
 import org.openhab.binding.insteon.internal.device.database.LegacyModemDBEntry;
 import org.openhab.binding.insteon.internal.transport.message.Msg;
 import org.openhab.core.io.transport.serial.SerialPortManager;
@@ -40,18 +37,14 @@ import org.openhab.core.io.transport.serial.SerialPortManager;
 public class LegacyDriver {
     private LegacyPort port;
     private LegacyDriverListener listener;
-    private LegacyPollManager poller;
-    private LegacyRequestManager requester;
     private Map<InsteonAddress, LegacyModemDBEntry> modemDBEntries = new HashMap<>();
     private ReentrantLock modemDBEntriesLock = new ReentrantLock();
 
-    public LegacyDriver(InsteonLegacyNetworkConfiguration config, LegacyDriverListener listener, HttpClient httpClient,
-            ScheduledExecutorService scheduler, SerialPortManager serialPortManager) {
+    public LegacyDriver(InsteonLegacyNetworkConfiguration config, LegacyDriverListener listener,
+            SerialPortManager serialPortManager, ScheduledExecutorService scheduler) {
         this.listener = listener;
 
-        this.port = new LegacyPort(config, this, httpClient, scheduler, serialPortManager);
-        this.poller = new LegacyPollManager(scheduler);
-        this.requester = new LegacyRequestManager(scheduler);
+        this.port = new LegacyPort(config, this, serialPortManager, scheduler);
     }
 
     public boolean isReady() {
@@ -77,14 +70,10 @@ public class LegacyDriver {
 
     public void start() {
         port.start();
-        poller.start();
-        requester.start();
     }
 
     public void stop() {
         port.stop();
-        poller.stop();
-        requester.stop();
     }
 
     public void writeMessage(Msg m) throws IOException {
@@ -115,13 +104,5 @@ public class LegacyDriver {
 
     public void disconnected() {
         listener.disconnected();
-    }
-
-    public LegacyPollManager getPollManager() {
-        return poller;
-    }
-
-    public LegacyRequestManager getRequestManager() {
-        return requester;
     }
 }

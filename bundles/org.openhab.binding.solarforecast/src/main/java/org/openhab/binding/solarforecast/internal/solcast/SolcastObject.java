@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,13 +12,12 @@
  */
 package org.openhab.binding.solarforecast.internal.solcast;
 
-import static org.openhab.binding.solarforecast.internal.solcast.SolcastConstants.*;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Map.Entry;
@@ -38,7 +37,6 @@ import org.openhab.binding.solarforecast.internal.actions.SolarForecast;
 import org.openhab.binding.solarforecast.internal.utils.Utils;
 import org.openhab.core.i18n.TimeZoneProvider;
 import org.openhab.core.library.types.QuantityType;
-import org.openhab.core.storage.Storage;
 import org.openhab.core.types.TimeSeries;
 import org.openhab.core.types.TimeSeries.Policy;
 import org.slf4j.Logger;
@@ -48,15 +46,10 @@ import org.slf4j.LoggerFactory;
  * The {@link SolcastObject} holds complete data for forecast
  *
  * @author Bernd Weymann - Initial contribution
- * @author Bernd Weymann - TimeSeries delivers only future values, otherwise
- *         past values are overwritten
+ * @author Bernd Weymann - TimeSeries delivers only future values, otherwise past values are overwritten
  */
 @NonNullByDefault
 public class SolcastObject implements SolarForecast {
-    public static final String FORECAST_APPENDIX = "-forecast";
-    public static final String CREATION_APPENDIX = "-creation";
-    public static final String EXPIRATION_APPENDIX = "-expiration";
-
     private static final TreeMap<ZonedDateTime, Double> EMPTY_MAP = new TreeMap<>();
 
     private final Logger logger = LoggerFactory.getLogger(SolcastObject.class);
@@ -67,8 +60,7 @@ public class SolcastObject implements SolarForecast {
 
     private DateTimeFormatter dateOutputFormatter;
     private String identifier;
-    private Optional<JSONArray> rawData = Optional.of(new JSONArray());
-    private Instant creationDateTime;
+    private Optional<JSONObject> rawData = Optional.of(new JSONObject());
     private Instant expirationDateTime;
     private long period = 30;
 
@@ -90,65 +82,70 @@ public class SolcastObject implements SolarForecast {
         }
     }
 
-    public SolcastObject(String id, @Nullable JSONArray forecast, Instant expiration, TimeZoneProvider tzp,
-            Storage<String> storage) {
-        JSONArray newForecast = forecast;
+    public SolcastObject(String id, Instant expiration, TimeZoneProvider tzp) {
+        // invalid forecast object
         identifier = id;
-        creationDateTime = Utils.now();
+        timeZoneProvider = tzp;
+        dateOutputFormatter = DateTimeFormatter.ofPattern(SolarForecastBindingConstants.PATTERN_FORMAT)
+                .withZone(tzp.getTimeZone());
+        expirationDateTime = expiration;
+    }
+
+    public SolcastObject(String id, String content, Instant expiration, TimeZoneProvider tzp) {
+        identifier = id;
         expirationDateTime = expiration;
         timeZoneProvider = tzp;
         dateOutputFormatter = DateTimeFormatter.ofPattern(SolarForecastBindingConstants.PATTERN_FORMAT)
                 .withZone(tzp.getTimeZone());
-        if (newForecast == null) {
-            // try to recover data from storage during initialization in order to reduce
-            // Solcast API calls
-            if (storage.containsKey(id + FORECAST_APPENDIX)) {
-                newForecast = new JSONArray(storage.get(id + FORECAST_APPENDIX));
-                String expirationString = storage.get(id + EXPIRATION_APPENDIX);
-                String creationString = storage.get(id + CREATION_APPENDIX);
-                if (creationString != null) {
-                    creationDateTime = Instant.parse(creationString);
-                }
-                if (expirationString != null) {
-                    expirationDateTime = Instant.parse(expirationString);
-                }
-                logger.debug("Successfully recovered Forecast - will expire {}", expirationDateTime);
+        add(content);
+    }
+
+    public void join(String content) {
+        add(content);
+    }
+
+    private void add(String content) {
+        if (!content.isEmpty()) {
+            JSONObject contentJson = new JSONObject(content);
+            JSONArray resultJsonArray;
+
+            // prepare data for raw channel
+            if (contentJson.has("forecasts")) {
+                resultJsonArray = contentJson.getJSONArray("forecasts");
+                addJSONArray(resultJsonArray);
+                rawData.get().put("forecasts", resultJsonArray);
             }
-        }
-        if (newForecast != null) {
-            addJSONArray(newForecast);
-            // store data in storage for later use e.g. after restart
-            storage.put(id + FORECAST_APPENDIX, newForecast.toString());
-            storage.put(id + CREATION_APPENDIX, creationDateTime.toString());
-            storage.put(id + EXPIRATION_APPENDIX, expirationDateTime.toString());
+            if (contentJson.has("estimated_actuals")) {
+                resultJsonArray = contentJson.getJSONArray("estimated_actuals");
+                addJSONArray(resultJsonArray);
+                rawData.get().put("estimated_actuals", resultJsonArray);
+            }
         }
     }
 
     private void addJSONArray(JSONArray resultJsonArray) {
-        rawData = Optional.of(resultJsonArray);
         // sort data into TreeMaps
         for (int i = 0; i < resultJsonArray.length(); i++) {
             JSONObject jo = resultJsonArray.getJSONObject(i);
-            String periodEnd = jo.getString(KEY_PERIOD_END);
-            ZonedDateTime periodEndZdt = Utils.getZdtFromUTC(periodEnd);
+            String periodEnd = jo.getString("period_end");
+            ZonedDateTime periodEndZdt = getZdtFromUTC(periodEnd);
             if (periodEndZdt == null) {
                 return;
             }
+            estimationDataMap.put(periodEndZdt, jo.getDouble("pv_estimate"));
 
-            double estimate = jo.getDouble(KEY_ESTIMATE);
-            estimationDataMap.put(periodEndZdt, estimate);
             // fill pessimistic values
-            if (jo.has(KEY_ESTIMATE10)) {
-                pessimisticDataMap.put(periodEndZdt, jo.getDouble(KEY_ESTIMATE10));
+            if (jo.has("pv_estimate10")) {
+                pessimisticDataMap.put(periodEndZdt, jo.getDouble("pv_estimate10"));
             } else {
-                pessimisticDataMap.put(periodEndZdt, estimate);
+                pessimisticDataMap.put(periodEndZdt, jo.getDouble("pv_estimate"));
             }
 
             // fill optimistic values
-            if (jo.has(KEY_ESTIMATE90)) {
-                optimisticDataMap.put(periodEndZdt, jo.getDouble(KEY_ESTIMATE90));
+            if (jo.has("pv_estimate90")) {
+                optimisticDataMap.put(periodEndZdt, jo.getDouble("pv_estimate90"));
             } else {
-                optimisticDataMap.put(periodEndZdt, estimate);
+                optimisticDataMap.put(periodEndZdt, jo.getDouble("pv_estimate"));
             }
             if (jo.has("period")) {
                 period = Duration.parse(jo.getString("period")).toMinutes();
@@ -157,7 +154,7 @@ public class SolcastObject implements SolarForecast {
     }
 
     public boolean isExpired() {
-        return expirationDateTime.isBefore(Utils.now());
+        return expirationDateTime.isBefore(Instant.now());
     }
 
     public double getActualEnergyValue(ZonedDateTime query, QueryMode mode) {
@@ -218,10 +215,10 @@ public class SolcastObject implements SolarForecast {
     public TimeSeries getEnergyTimeSeries(QueryMode mode) {
         TreeMap<ZonedDateTime, Double> dtm = getDataMap(mode);
         TimeSeries ts = new TimeSeries(Policy.REPLACE);
-        Instant startTime = Utils.now().minus(30, ChronoUnit.MINUTES);
+        Instant now = Instant.now(Utils.getClock());
         dtm.forEach((timestamp, energy) -> {
             Instant entryTimestamp = timestamp.toInstant();
-            if (Utils.isAfterOrEqual(entryTimestamp, startTime)) {
+            if (Utils.isAfterOrEqual(entryTimestamp, now)) {
                 ts.add(entryTimestamp, Utils.getEnergyState(getActualEnergyValue(timestamp, mode)));
             }
         });
@@ -272,10 +269,10 @@ public class SolcastObject implements SolarForecast {
     public TimeSeries getPowerTimeSeries(QueryMode mode) {
         TreeMap<ZonedDateTime, Double> dtm = getDataMap(mode);
         TimeSeries ts = new TimeSeries(Policy.REPLACE);
-        Instant startTime = Utils.now().minus(30, ChronoUnit.MINUTES);
+        Instant now = Instant.now(Utils.getClock());
         dtm.forEach((timestamp, power) -> {
             Instant entryTimestamp = timestamp.toInstant();
-            if (Utils.isAfterOrEqual(entryTimestamp, startTime)) {
+            if (Utils.isAfterOrEqual(entryTimestamp, now)) {
                 ts.add(entryTimestamp, Utils.getPowerState(power));
             }
         });
@@ -321,11 +318,11 @@ public class SolcastObject implements SolarForecast {
         return "Expiration: " + expirationDateTime + ", Data: " + estimationDataMap;
     }
 
-    public JSONArray getRaw() {
+    public String getRaw() {
         if (rawData.isPresent()) {
-            return rawData.get();
+            return rawData.get().toString();
         }
-        return new JSONArray();
+        return "{}";
     }
 
     private TreeMap<ZonedDateTime, Double> getDataMap(QueryMode mode) {
@@ -348,6 +345,16 @@ public class SolcastObject implements SolarForecast {
                 break;
         }
         return returnMap;
+    }
+
+    public @Nullable ZonedDateTime getZdtFromUTC(String utc) {
+        try {
+            Instant timestamp = Instant.parse(utc);
+            return timestamp.atZone(timeZoneProvider.getTimeZone());
+        } catch (DateTimeParseException dtpe) {
+            logger.warn("Exception parsing time {} Reason: {}", utc, dtpe.getMessage());
+        }
+        return null;
     }
 
     /**
@@ -385,7 +392,7 @@ public class SolcastObject implements SolarForecast {
         if (mode.equals(QueryMode.Error)) {
             return Utils.getEnergyState(-1);
         } else if (mode.equals(QueryMode.Optimistic) || mode.equals(QueryMode.Pessimistic)) {
-            if (end.isBefore(Utils.now())) {
+            if (end.isBefore(Instant.now())) {
                 throw new IllegalArgumentException(
                         "Solcast argument " + mode.toString() + " only available for future values");
             }
@@ -426,7 +433,7 @@ public class SolcastObject implements SolarForecast {
                 throw new IllegalArgumentException("Solcast doesn't support argument " + args[0]);
             }
         } else if (mode.equals(QueryMode.Optimistic) || mode.equals(QueryMode.Pessimistic)) {
-            if (timestamp.isBefore(Utils.now().minus(1, ChronoUnit.MINUTES))) {
+            if (timestamp.isBefore(Instant.now().minus(1, ChronoUnit.MINUTES))) {
                 throw new IllegalArgumentException(
                         "Solcast argument " + mode.toString() + " only available for future values");
             }
@@ -453,7 +460,6 @@ public class SolcastObject implements SolarForecast {
 
     @Override
     public void triggerUpdate() {
-        logger.trace("{} manual update triggered", identifier);
         expirationDateTime = Instant.MIN;
     }
 
@@ -506,10 +512,5 @@ public class SolcastObject implements SolarForecast {
         } else {
             return "Invalid time range";
         }
-    }
-
-    @Override
-    public Instant getCreationInstant() {
-        return creationDateTime;
     }
 }

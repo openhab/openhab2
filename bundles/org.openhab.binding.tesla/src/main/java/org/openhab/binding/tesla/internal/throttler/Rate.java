@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,8 +17,6 @@ import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
-
 /**
  * The {@link Rate} defines a rate limiter that accepts a number of calls to be
  * executed in a given time length. If the quota of calls is used, then calls
@@ -26,7 +24,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  *
  * @author Karel Goderis - Initial contribution
  */
-@NonNullByDefault
 public final class Rate {
 
     private final int numberCalls;

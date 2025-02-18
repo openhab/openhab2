@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,8 +16,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
@@ -101,11 +100,11 @@ public class LGWebOSActions implements ThingActions {
     public void showToast(
             @ActionInput(name = "icon", label = "@text/actionShowToastInputIconLabel", description = "@text/actionShowToastInputIconDesc") String icon,
             @ActionInput(name = "text", label = "@text/actionShowToastInputTextLabel", description = "@text/actionShowToastInputTextDesc") String text)
-            throws IOException, URISyntaxException {
-        BufferedImage bi = ImageIO.read(new URI(icon).toURL());
+            throws IOException {
+        BufferedImage bi = ImageIO.read(new URL(icon));
         try (ByteArrayOutputStream os = new ByteArrayOutputStream(); OutputStream b64 = Base64.getEncoder().wrap(os)) {
             ImageIO.write(bi, "png", b64);
-            String string = os.toString(StandardCharsets.UTF_8);
+            String string = os.toString(StandardCharsets.UTF_8.name());
             getConnectedSocket().ifPresent(control -> control.showToast(text, string, "png", createResponseListener()));
         }
     }
@@ -262,8 +261,7 @@ public class LGWebOSActions implements ThingActions {
         ((LGWebOSActions) actions).showToast(text);
     }
 
-    public static void showToast(ThingActions actions, String icon, String text)
-            throws IOException, URISyntaxException {
+    public static void showToast(ThingActions actions, String icon, String text) throws IOException {
         ((LGWebOSActions) actions).showToast(icon, text);
     }
 

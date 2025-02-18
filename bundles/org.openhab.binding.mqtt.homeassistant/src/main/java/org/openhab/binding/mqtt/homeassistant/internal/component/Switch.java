@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -27,7 +27,7 @@ import com.google.gson.annotations.SerializedName;
  */
 @NonNullByDefault
 public class Switch extends AbstractComponent<Switch.ChannelConfiguration> {
-    public static final String SWITCH_CHANNEL_ID = "switch";
+    public static final String SWITCH_CHANNEL_ID = "switch"; // Randomly chosen channel "ID"
 
     /**
      * Configuration class for MQTT component
@@ -52,10 +52,15 @@ public class Switch extends AbstractComponent<Switch.ChannelConfiguration> {
         protected String payloadOn = "ON";
         @SerializedName("payload_off")
         protected String payloadOff = "OFF";
+
+        @SerializedName("json_attributes_topic")
+        protected @Nullable String jsonAttributesTopic;
+        @SerializedName("json_attributes_template")
+        protected @Nullable String jsonAttributesTemplate;
     }
 
-    public Switch(ComponentFactory.ComponentConfiguration componentConfiguration) {
-        super(componentConfiguration, ChannelConfiguration.class);
+    public Switch(ComponentFactory.ComponentConfiguration componentConfiguration, boolean newStyleChannels) {
+        super(componentConfiguration, ChannelConfiguration.class, newStyleChannels);
 
         OnOffValue value = new OnOffValue(channelConfiguration.stateOn, channelConfiguration.stateOff,
                 channelConfiguration.payloadOn, channelConfiguration.payloadOff);
@@ -66,7 +71,6 @@ public class Switch extends AbstractComponent<Switch.ChannelConfiguration> {
                 .commandTopic(channelConfiguration.commandTopic, channelConfiguration.isRetain(),
                         channelConfiguration.getQos())
                 .inferOptimistic(channelConfiguration.optimistic).build();
-
         finalizeChannels();
     }
 }

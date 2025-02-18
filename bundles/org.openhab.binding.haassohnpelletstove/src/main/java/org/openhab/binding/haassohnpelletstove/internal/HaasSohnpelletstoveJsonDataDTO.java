@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,7 +21,7 @@ import com.google.gson.annotations.SerializedName;
  * @author Christian Feininger - Initial contribution
  */
 public class HaasSohnpelletstoveJsonDataDTO {
-    Metadata meta = new Metadata();
+    metadata meta = new metadata();
     boolean prg;
     boolean wprg;
     String mode = "";
@@ -32,9 +32,9 @@ public class HaasSohnpelletstoveJsonDataDTO {
     @SerializedName("ht_char")
     String htChar = "";
     @SerializedName("weekprogram")
-    private Wprogram[] weekprogram;
+    private wprogram[] weekprogram;
     @SerializedName("error")
-    private Err[] error;
+    private err[] error;
     @SerializedName("eco_mode")
     boolean ecoMode;
     boolean pgi;
@@ -98,7 +98,7 @@ public class HaasSohnpelletstoveJsonDataDTO {
         return this;
     }
 
-    public class Metadata {
+    public class metadata {
         @SerializedName("sw_version")
         String swVersion = "";
         @SerializedName("hw_version")
@@ -119,19 +119,19 @@ public class HaasSohnpelletstoveJsonDataDTO {
         String ean = "";
         boolean rau;
         @SerializedName("wlan_features")
-        private String[] wlanFeatures;
+        private String[] wlan_features;
 
         public String getNonce() {
             return nonce;
         }
     }
 
-    public class Err {
+    public class err {
         String time = "";
         String nr = "";
     }
 
-    public class Wprogram {
+    public class wprogram {
         String day = "";
         String begin = "";
         String end = "";

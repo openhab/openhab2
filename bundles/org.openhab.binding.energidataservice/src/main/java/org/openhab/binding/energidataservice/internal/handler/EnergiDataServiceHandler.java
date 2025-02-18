@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -44,12 +44,12 @@ import org.openhab.binding.energidataservice.internal.action.EnergiDataServiceAc
 import org.openhab.binding.energidataservice.internal.api.ChargeType;
 import org.openhab.binding.energidataservice.internal.api.ChargeTypeCode;
 import org.openhab.binding.energidataservice.internal.api.DatahubTariffFilter;
+import org.openhab.binding.energidataservice.internal.api.DatahubTariffFilterFactory;
 import org.openhab.binding.energidataservice.internal.api.DateQueryParameter;
 import org.openhab.binding.energidataservice.internal.api.DateQueryParameterType;
 import org.openhab.binding.energidataservice.internal.api.GlobalLocationNumber;
 import org.openhab.binding.energidataservice.internal.api.dto.DatahubPricelistRecord;
 import org.openhab.binding.energidataservice.internal.api.dto.ElspotpriceRecord;
-import org.openhab.binding.energidataservice.internal.api.filter.DatahubTariffFilterFactory;
 import org.openhab.binding.energidataservice.internal.config.DatahubPriceConfiguration;
 import org.openhab.binding.energidataservice.internal.config.EnergiDataServiceConfiguration;
 import org.openhab.binding.energidataservice.internal.exception.DataServiceException;
@@ -101,21 +101,18 @@ public class EnergiDataServiceHandler extends BaseThingHandler
     private final ApiController apiController;
     private final ElectricityPriceProvider electricityPriceProvider;
     private final Co2EmissionProvider co2EmissionProvider;
-    private final DatahubTariffFilterFactory datahubTariffFilterFactory;
     private final Set<Subscription> activeSubscriptions = new HashSet<>();
 
     private EnergiDataServiceConfiguration config;
 
     public EnergiDataServiceHandler(final Thing thing, final HttpClient httpClient,
             final TimeZoneProvider timeZoneProvider, final ElectricityPriceProvider electricityPriceProvider,
-            final Co2EmissionProvider co2EmissionProvider,
-            final DatahubTariffFilterFactory datahubTariffFilterFactory) {
+            final Co2EmissionProvider co2EmissionProvider) {
         super(thing);
         this.timeZoneProvider = timeZoneProvider;
         this.apiController = new ApiController(httpClient, timeZoneProvider);
         this.electricityPriceProvider = electricityPriceProvider;
         this.co2EmissionProvider = co2EmissionProvider;
-        this.datahubTariffFilterFactory = datahubTariffFilterFactory;
 
         // Default configuration
         this.config = new EnergiDataServiceConfiguration();
@@ -379,21 +376,21 @@ public class EnergiDataServiceHandler extends BaseThingHandler
     private DatahubTariffFilter getGridTariffFilter() {
         Channel channel = getThing().getChannel(CHANNEL_GRID_TARIFF);
         if (channel == null) {
-            return datahubTariffFilterFactory.getGridTariffByGLN(config.gridCompanyGLN);
+            return DatahubTariffFilterFactory.getGridTariffByGLN(config.gridCompanyGLN);
         }
 
         DatahubPriceConfiguration datahubPriceConfiguration = channel.getConfiguration()
                 .as(DatahubPriceConfiguration.class);
 
         if (!datahubPriceConfiguration.hasAnyFilterOverrides()) {
-            return datahubTariffFilterFactory.getGridTariffByGLN(config.gridCompanyGLN);
+            return DatahubTariffFilterFactory.getGridTariffByGLN(config.gridCompanyGLN);
         }
 
         DateQueryParameter start = datahubPriceConfiguration.getStart();
         if (start == null) {
             logger.warn("Invalid channel configuration parameter 'start' or 'offset': {} (offset: {})",
                     datahubPriceConfiguration.start, datahubPriceConfiguration.offset);
-            return datahubTariffFilterFactory.getGridTariffByGLN(config.gridCompanyGLN);
+            return DatahubTariffFilterFactory.getGridTariffByGLN(config.gridCompanyGLN);
         }
 
         Set<ChargeTypeCode> chargeTypeCodes = datahubPriceConfiguration.getChargeTypeCodes();
@@ -404,7 +401,7 @@ public class EnergiDataServiceHandler extends BaseThingHandler
             filter = new DatahubTariffFilter(chargeTypeCodes, notes, start);
         } else {
             // Only override start date in pre-configured filter.
-            filter = new DatahubTariffFilter(datahubTariffFilterFactory.getGridTariffByGLN(config.gridCompanyGLN),
+            filter = new DatahubTariffFilter(DatahubTariffFilterFactory.getGridTariffByGLN(config.gridCompanyGLN),
                     start);
         }
 

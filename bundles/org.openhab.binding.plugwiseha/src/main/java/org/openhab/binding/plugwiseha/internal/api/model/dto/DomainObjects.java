@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -30,6 +30,7 @@ public class DomainObjects {
     @XStreamImplicit(itemFieldName = "location", keyFieldName = "id")
     private Locations locations = new Locations();
 
+    @SuppressWarnings("unused")
     @XStreamImplicit(itemFieldName = "module", keyFieldName = "id")
     private Modules modules = new Modules();
 
@@ -46,9 +47,7 @@ public class DomainObjects {
     }
 
     public Appliances mergeAppliances(Appliances updatedAppliances) {
-        if (appliances == null) {
-            this.appliances = updatedAppliances;
-        } else if (updatedAppliances != null) {
+        if (updatedAppliances != null) {
             this.appliances.merge(updatedAppliances);
         }
 
@@ -56,9 +55,7 @@ public class DomainObjects {
     }
 
     public Locations mergeLocations(Locations updatedLocations) {
-        if (locations == null) {
-            this.locations = updatedLocations;
-        } else if (updatedLocations != null) {
+        if (updatedLocations != null) {
             this.locations.merge(updatedLocations);
         }
 

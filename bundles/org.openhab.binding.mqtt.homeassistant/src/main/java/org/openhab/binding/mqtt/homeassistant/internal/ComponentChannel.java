@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -85,12 +85,8 @@ public class ComponentChannel {
         channelState.setChannelUID(channelUID);
     }
 
-    public void resetConfiguration(Configuration configuration) {
-        channel = ChannelBuilder.create(channel).withConfiguration(configuration).build();
-    }
-
     public void clearConfiguration() {
-        resetConfiguration(new Configuration());
+        channel = ChannelBuilder.create(channel).withConfiguration(new Configuration()).build();
     }
 
     public ChannelState getState() {
@@ -145,8 +141,6 @@ public class ComponentChannel {
 
         private @Nullable String templateIn;
         private @Nullable String templateOut;
-
-        private @Nullable Configuration configuration;
 
         private String format = "%s";
 
@@ -231,11 +225,6 @@ public class ComponentChannel {
             return this;
         }
 
-        public Builder withConfiguration(Configuration configuration) {
-            this.configuration = configuration;
-            return this;
-        }
-
         // If the component explicitly specifies optimistic, or it's missing a state topic
         // put it in optimistic mode (which, in openHAB parlance, means to auto-update the
         // item).
@@ -297,12 +286,9 @@ public class ComponentChannel {
                 commandDescription = valueState.createCommandDescription().build();
             }
 
-            Configuration configuration = this.configuration;
-            if (configuration == null) {
-                configuration = new Configuration();
-                configuration.put("config", component.getChannelConfigurationJson());
-                component.getHaID().toConfig(configuration);
-            }
+            Configuration configuration = new Configuration();
+            configuration.put("config", component.getChannelConfigurationJson());
+            component.getHaID().toConfig(configuration);
 
             channel = ChannelBuilder.create(channelUID, channelState.getItemType()).withType(channelTypeUID)
                     .withKind(kind).withLabel(label).withConfiguration(configuration)

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -50,30 +50,8 @@ public class OnvifCodec extends ChannelDuplexHandler {
         }
         try {
             if (msg instanceof HttpResponse response) {
-                switch (response.status().code()) {
-                    case 200:
-                        break;
-                    case 400:
-                        onvifConnection.processBadRequest(requestType);
-                        ctx.close();
-                        return;
-                    case 401:
-                        if (!response.headers().isEmpty()) {
-                            for (CharSequence name : response.headers().names()) {
-                                for (CharSequence value : response.headers().getAll(name)) {
-                                    if ("WWW-Authenticate".equalsIgnoreCase(name.toString())) {
-                                        logger.debug(
-                                                "ONVIF {} replied with WWW-Authenticate header:{}, camera may require ONVIF Profile-T support.",
-                                                requestType, value.toString());
-                                    }
-                                }
-                            }
-                        }
-                    default:
-                        logger.trace("ONVIF {} replied with code {}, the message is {}", requestType,
-                                response.status().code(), msg);
-                        ctx.close();
-                        return;
+                if (response.status().code() != 200) {
+                    logger.trace("ONVIF replied with code {} message is {}", response.status().code(), msg);
                 }
             }
             if (msg instanceof HttpContent content) {
@@ -95,11 +73,11 @@ public class OnvifCodec extends ChannelDuplexHandler {
         }
         if (evt instanceof IdleStateEvent) {
             IdleStateEvent e = (IdleStateEvent) evt;
-            logger.debug("IdleStateEvent received for {} : {}", requestType, e.state());
+            logger.debug("IdleStateEvent received: {}", e.state());
             onvifConnection.setIsConnected(false);
             ctx.close();
         } else {
-            logger.debug("ONVIF {} netty channel event occurred: {}", requestType, evt);
+            logger.debug("ONVIF netty channel event occurred: {}", evt);
         }
     }
 
@@ -108,14 +86,13 @@ public class OnvifCodec extends ChannelDuplexHandler {
         if (ctx == null || cause == null) {
             return;
         }
-        logger.debug("Exception on ONVIF {} connection: {}", requestType, cause.getMessage());
+        logger.debug("Exception on ONVIF connection: {}", cause.getMessage());
         ctx.close();
     }
 
     @Override
     public void handlerRemoved(@Nullable ChannelHandlerContext ctx) {
         if (requestType == RequestType.PullMessages) {
-            onvifConnection.lastPullMessageReceivedTimestamp = System.currentTimeMillis();
             onvifConnection.pullMessageRequests.decrementAndGet();
         }
     }

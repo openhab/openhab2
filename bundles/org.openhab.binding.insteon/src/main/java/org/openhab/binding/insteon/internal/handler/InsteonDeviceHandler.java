@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,8 +15,10 @@ package org.openhab.binding.insteon.internal.handler;
 import static org.openhab.binding.insteon.internal.InsteonBindingConstants.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -30,6 +32,7 @@ import org.openhab.binding.insteon.internal.device.InsteonAddress;
 import org.openhab.binding.insteon.internal.device.InsteonDevice;
 import org.openhab.binding.insteon.internal.device.InsteonEngine;
 import org.openhab.binding.insteon.internal.device.InsteonModem;
+import org.openhab.core.config.core.Configuration;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.ChannelUID;
@@ -111,7 +114,10 @@ public class InsteonDeviceHandler extends InsteonBaseThingHandler {
 
     private void changeThingType(ThingTypeUID thingTypeUID, @Nullable BridgeHandler bridgeHandler) {
         if (bridgeHandler instanceof InsteonLegacyNetworkHandler legacyNetworkHandler) {
-            getThing().getChannels().forEach(legacyNetworkHandler::cacheChannel);
+            Map<ChannelUID, Configuration> channelConfigs = getThing().getChannels().stream()
+                    .collect(Collectors.toMap(Channel::getUID, Channel::getConfiguration));
+
+            legacyNetworkHandler.addChannelConfigs(channelConfigs);
         }
 
         changeThingType(thingTypeUID, getConfig());

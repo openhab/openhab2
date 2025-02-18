@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,7 @@
  */
 package org.openhab.binding.shelly.internal.api2;
 
-import static org.openhab.binding.shelly.internal.ShellyBindingConstants.*;
+import static org.openhab.binding.shelly.internal.ShellyBindingConstants.CHANNEL_INPUT;
 import static org.openhab.binding.shelly.internal.api1.Shelly1ApiJsonDTO.*;
 import static org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.*;
 import static org.openhab.binding.shelly.internal.util.ShellyUtils.*;
@@ -20,7 +20,6 @@ import static org.openhab.binding.shelly.internal.util.ShellyUtils.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Random;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -62,13 +61,11 @@ import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceS
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2CoverStatus;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2DeviceStatusEm;
-import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2DeviceStatusEmData;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2DeviceStatusHumidity;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2DeviceStatusIlluminance;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2DeviceStatusPower;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2DeviceStatusSmoke;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2DeviceStatusTempId;
-import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2DeviceStatusResult.Shelly2RGBWStatus;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2DeviceStatus.Shelly2InputStatus;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2RelayStatus;
 import org.openhab.binding.shelly.internal.api2.Shelly2ApiJsonDTO.Shelly2RpcBaseMessage;
@@ -193,12 +190,11 @@ public class Shelly2ApiClient extends ShellyHttpClient {
         updated |= updateRelayStatus(status, result.switch3, channelUpdate);
         updated |= updateRelayStatus(status, result.switch100, channelUpdate);
         updated |= updateRelayStatus(status, result.pm10, channelUpdate);
-        updated |= updateEmStatus(status, result.em0, result.emdata0, channelUpdate);
+        updated |= updateEmStatus(status, result.em0, channelUpdate);
         updated |= updateEmStatus(status, result.em10, channelUpdate);
         updated |= updateEmStatus(status, result.em11, channelUpdate);
         updated |= updateRollerStatus(status, result.cover0, channelUpdate);
         updated |= updateDimmerStatus(status, result.light0, channelUpdate);
-        updated |= updateRGBWStatus(status, result.rgbw0, channelUpdate);
         if (channelUpdate) {
             updated |= ShellyComponents.updateMeters(getThing(), status);
         }
@@ -358,8 +354,8 @@ public class Shelly2ApiClient extends ShellyHttpClient {
     }
 
     private boolean updateEmStatus(ShellySettingsStatus status, @Nullable Shelly2DeviceStatusEm em,
-            @Nullable Shelly2DeviceStatusEmData emData, boolean channelUpdate) throws ShellyApiException {
-        if (em == null || emData == null) {
+            boolean channelUpdate) throws ShellyApiException {
+        if (em == null) {
             return false;
         }
 
@@ -373,17 +369,10 @@ public class Shelly2ApiClient extends ShellyHttpClient {
             status.totalReturned = em.totalAprtPower;
         }
 
-        if (emData.totalKWH != null) {
-            status.totalKWH = emData.totalKWH;
-        }
-
         ShellySettingsMeter sm = new ShellySettingsMeter();
         ShellySettingsEMeter emeter = status.emeters.get(0);
         if (em.aActPower != null) {
             sm.power = emeter.power = em.aActPower;
-        }
-        if (emData.aTotal != null) {
-            emeter.total = emData.aTotal;
         }
         if (em.aAprtPower != null) {
             emeter.totalReturned = em.aAprtPower;
@@ -407,9 +396,6 @@ public class Shelly2ApiClient extends ShellyHttpClient {
             if (em.bActPower != null) {
                 sm.power = emeter.power = em.bActPower;
             }
-            if (emData.bTotal != null) {
-                emeter.total = emData.bTotal;
-            }
             if (em.bAprtPower != null) {
                 emeter.totalReturned = em.bAprtPower;
             }
@@ -432,9 +418,6 @@ public class Shelly2ApiClient extends ShellyHttpClient {
             sm.isValid = emeter.isValid = true;
             if (em.cActPower != null) {
                 sm.power = emeter.power = em.cActPower;
-            }
-            if (emData.cTotal != null) {
-                emeter.total = emData.cTotal;
             }
             if (em.cAprtPower != null) {
                 emeter.totalReturned = em.cAprtPower;
@@ -590,21 +573,6 @@ public class Shelly2ApiClient extends ShellyHttpClient {
         }
     }
 
-    protected void fillRgbwSettings(ShellyDeviceProfile profile, Shelly2GetConfigResult dc) {
-        if (!profile.isRGBW2 || dc.rgbw0 == null) {
-            return;
-        }
-
-        List<ShellySettingsRgbwLight> lights = profile.settings.lights;
-        if (lights != null) {
-            ShellySettingsRgbwLight ls = lights.get(0);
-            ls.autoOn = dc.rgbw0.autoOnDelay;
-            ls.autoOff = dc.rgbw0.autoOffDelay;
-            ls.name = dc.rgbw0.name;
-            lights.set(0, ls);
-        }
-    }
-
     private boolean updateDimmerStatus(ShellySettingsStatus status, @Nullable Shelly2DeviceStatusLight value,
             boolean channelUpdate) throws ShellyApiException {
         ShellyDeviceProfile profile = getProfile();
@@ -623,33 +591,12 @@ public class Shelly2ApiClient extends ShellyHttpClient {
         return channelUpdate ? ShellyComponents.updateDimmers(getThing(), status) : false;
     }
 
-    private boolean updateRGBWStatus(ShellySettingsStatus status, @Nullable Shelly2RGBWStatus value,
-            boolean channelUpdate) throws ShellyApiException {
-        ShellyDeviceProfile profile = getProfile();
-        if (!profile.isRGBW2 || value == null) {
-            return false;
-        }
-
-        ShellySettingsLight ds = status.lights.get(0);
-        ds.brightness = Objects.requireNonNullElse(value.brightness, ds.brightness).intValue();
-        if (value.rgb != null) {
-            ds.red = value.rgb[0];
-            ds.green = value.rgb[1];
-            ds.blue = value.rgb[2];
-        }
-        ds.white = Objects.requireNonNullElse(value.white, ds.white);
-        ds.ison = value.output;
-
-        status.lights.set(0, ds);
-        return channelUpdate ? ShellyComponents.updateRGBW(getThing(), status) : false;
-    }
-
-    protected @Nullable Integer getDuration(@Nullable Double timerStartedAt, @Nullable Double timerDuration) {
+    protected @Nullable Integer getDuration(@Nullable Double timerStartedAt, @Nullable Integer timerDuration) {
         if (timerStartedAt == null || timerDuration == null) {
             return null;
         }
-        double duration = now() - timerStartedAt;
-        return duration <= timerDuration ? (int) (timerDuration - duration) : 0;
+        int duration = (int) (now() - timerStartedAt.longValue());
+        return duration <= timerDuration ? timerDuration - duration : 0;
     }
 
     // Addon

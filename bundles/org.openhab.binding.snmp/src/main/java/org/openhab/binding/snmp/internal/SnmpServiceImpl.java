@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,27 +13,20 @@
 package org.openhab.binding.snmp.internal;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.snmp.internal.config.SnmpServiceConfiguration;
 import org.openhab.core.config.core.Configuration;
-import org.openhab.core.net.CidrAddress;
-import org.openhab.core.net.NetworkAddressChangeListener;
-import org.openhab.core.net.NetworkAddressService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
-import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.CommandResponder;
@@ -71,31 +64,27 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 @NonNullByDefault
 @Component(configurationPid = "binding.snmp", service = SnmpService.class)
-public class SnmpServiceImpl implements SnmpService, NetworkAddressChangeListener {
+public class SnmpServiceImpl implements SnmpService {
     private final Logger logger = LoggerFactory.getLogger(SnmpServiceImpl.class);
 
     private @Nullable Snmp snmp;
     private @Nullable DefaultUdpTransportMapping transport;
-    private final NetworkAddressService networkAddressService;
 
     private final List<CommandResponder> listeners = new ArrayList<>();
     private final Set<UserEntry> userEntries = new HashSet<>();
-    private Map<String, Object> config = new HashMap<>();
 
     @Activate
-    public SnmpServiceImpl(Map<String, Object> config, @Reference NetworkAddressService networkAddressService) {
+    public SnmpServiceImpl(Map<String, Object> config) {
         addProtocols();
         OctetString localEngineId = new OctetString(MPv3.createLocalEngineID());
         USM usm = new USM(SecurityProtocols.getInstance(), localEngineId, 0);
         SecurityModels.getInstance().addSecurityModel(usm);
-        this.networkAddressService = networkAddressService;
-        networkAddressService.addNetworkAddressChangeListener(this);
+
         modified(config);
     }
 
     @Modified
     protected void modified(Map<String, Object> config) {
-        this.config = config;
         SnmpServiceConfiguration snmpCfg = new Configuration(config).as(SnmpServiceConfiguration.class);
         try {
             shutdownSnmp();
@@ -103,10 +92,7 @@ public class SnmpServiceImpl implements SnmpService, NetworkAddressChangeListene
             final DefaultUdpTransportMapping transport;
 
             if (snmpCfg.port > 0) {
-                InetAddress inetAddress = Objects.requireNonNullElse(
-                        InetAddress.getByName(networkAddressService.getPrimaryIpv4HostAddress()),
-                        InetAddress.getLocalHost());
-                transport = new DefaultUdpTransportMapping(new UdpAddress(inetAddress, snmpCfg.port), true);
+                transport = new DefaultUdpTransportMapping(new UdpAddress(snmpCfg.port), true);
             } else {
                 transport = new DefaultUdpTransportMapping();
             }
@@ -123,7 +109,7 @@ public class SnmpServiceImpl implements SnmpService, NetworkAddressChangeListene
             this.snmp = snmp;
             this.transport = transport;
 
-            logger.info("Initialized SNMP service at {}", transport.getAddress());
+            logger.debug("initialized SNMP at {}", transport.getAddress());
         } catch (IOException e) {
             logger.warn("could not open SNMP instance on port {}: {}", snmpCfg.port, e.getMessage());
         }
@@ -135,7 +121,7 @@ public class SnmpServiceImpl implements SnmpService, NetworkAddressChangeListene
         try {
             shutdownSnmp();
         } catch (IOException e) {
-            logger.warn("Could not end SNMP service: {}", e.getMessage());
+            logger.info("could not end SNMP: {}", e.getMessage());
         }
     }
 
@@ -235,11 +221,5 @@ public class SnmpServiceImpl implements SnmpService, NetworkAddressChangeListene
             this.engineId = engineId;
             this.user = user;
         }
-    }
-
-    @Override
-    public void onChanged(List<CidrAddress> added, List<CidrAddress> removed) {
-        logger.trace("SNMP reacting on network interface changes.");
-        modified(this.config);
     }
 }

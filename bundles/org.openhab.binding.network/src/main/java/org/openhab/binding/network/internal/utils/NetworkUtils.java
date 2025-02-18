@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -55,10 +55,9 @@ import org.slf4j.LoggerFactory;
 public class NetworkUtils {
 
     /**
-     * Nanos per millisecond and microsecond.
+     * Nanos per millisecond.
      */
     private static final long NANOS_PER_MILLI = 1000_000L;
-    private static final long NANOS_PER_MICRO = 1000L;
 
     /**
      * Converts a {@link Duration} to milliseconds.
@@ -83,17 +82,6 @@ public class NetworkUtils {
      */
     public static Duration millisToDuration(double millis) {
         return Duration.ofNanos((long) (millis * NANOS_PER_MILLI));
-    }
-
-    /**
-     * Converts a double representing microseconds to a {@link Duration} instance.
-     * <p>
-     *
-     * @param micros the microseconds to be converted
-     * @return a {@link Duration} instance representing the given microseconds
-     */
-    public static Duration microsToDuration(double micros) {
-        return Duration.ofNanos((long) (micros * NANOS_PER_MICRO));
     }
 
     private final Logger logger = LoggerFactory.getLogger(NetworkUtils.class);
@@ -298,7 +286,6 @@ public class NetworkUtils {
     }
 
     public enum IpPingMethodEnum {
-        DISABLED,
         JAVA_PING,
         WINDOWS_PING,
         IPUTILS_LINUX_PING,
@@ -427,25 +414,7 @@ public class NetworkUtils {
 
         // The return code is 0 for a successful ping. 1 if device didn't respond and 2 if there is another error like
         // network interface not ready.
-        int result = proc.waitFor();
-        if (result != 0) {
-            return new PingResult(false, Duration.between(execStartTime, Instant.now()));
-        }
-
-        PingResult pingResult = new PingResult(true, Duration.between(execStartTime, Instant.now()));
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-            String line = r.readLine();
-            while (line != null) {
-                Duration responseTime = latencyParser.parseLatency(line);
-                if (responseTime != null) {
-                    pingResult.setResponseTime(responseTime);
-                    return pingResult;
-                }
-                line = r.readLine();
-            }
-        }
-
-        return pingResult;
+        return new PingResult(proc.waitFor() == 0, Duration.between(execStartTime, Instant.now()));
     }
 
     /**
@@ -477,8 +446,7 @@ public class NetworkUtils {
     public void wakeUpIOS(InetAddress address) throws IOException {
         int port = 5353;
         try (DatagramSocket s = new DatagramSocket()) {
-            // Send a valid mDNS packet (12 bytes of zeroes)
-            byte[] buffer = new byte[12];
+            byte[] buffer = new byte[0];
             s.send(new DatagramPacket(buffer, buffer.length, address, port));
             logger.trace("Sent packet to {}:{} to wake up iOS device", address, port);
         } catch (PortUnreachableException e) {

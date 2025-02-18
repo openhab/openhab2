@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -29,7 +29,7 @@ import org.eclipse.jetty.websocket.api.StatusCode;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
 import org.eclipse.jetty.websocket.api.WebSocketPingPongListener;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
-import org.openhab.binding.tesla.internal.protocol.dto.Event;
+import org.openhab.binding.tesla.internal.protocol.Event;
 import org.openhab.core.io.net.http.WebSocketFactory;
 import org.openhab.core.thing.ThingUID;
 import org.openhab.core.thing.util.ThingWebClientUtil;
@@ -54,20 +54,25 @@ public class TeslaEventEndpoint implements WebSocketListener, WebSocketPingPongL
     private final Logger logger = LoggerFactory.getLogger(TeslaEventEndpoint.class);
 
     private String endpointId;
+    protected WebSocketFactory webSocketFactory;
 
     private WebSocketClient client;
     private ConnectionState connectionState = ConnectionState.CLOSED;
     private @Nullable Session session;
-    private @Nullable EventHandler eventHandler;
+    private EventHandler eventHandler;
     private final Gson gson = new Gson();
 
     public TeslaEventEndpoint(ThingUID uid, WebSocketFactory webSocketFactory) {
-        this.endpointId = "TeslaEventEndpoint-" + uid.getAsString();
+        try {
+            this.endpointId = "TeslaEventEndpoint-" + uid.getAsString();
 
-        String name = ThingWebClientUtil.buildWebClientConsumerName(uid, null);
-        client = webSocketFactory.createWebSocketClient(name);
-        this.client.setConnectTimeout(TIMEOUT_MILLISECONDS);
-        this.client.setMaxIdleTimeout(IDLE_TIMEOUT_MILLISECONDS);
+            String name = ThingWebClientUtil.buildWebClientConsumerName(uid, null);
+            client = webSocketFactory.createWebSocketClient(name);
+            this.client.setConnectTimeout(TIMEOUT_MILLISECONDS);
+            this.client.setMaxIdleTimeout(IDLE_TIMEOUT_MILLISECONDS);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void close() {
@@ -112,22 +117,19 @@ public class TeslaEventEndpoint implements WebSocketListener, WebSocketPingPongL
     }
 
     @Override
-    public void onWebSocketConnect(@Nullable Session session) {
-        logger.debug("{} : Connected to {} with hash {}", endpointId,
-                (session != null) ? session.getRemoteAddress().getAddress() : "Unknown",
-                (session != null) ? session.hashCode() : -1);
+    public void onWebSocketConnect(Session session) {
+        logger.debug("{} : Connected to {} with hash {}", endpointId, session.getRemoteAddress().getAddress(),
+                session.hashCode());
         connectionState = ConnectionState.CONNECTED;
         this.session = session;
     }
 
     public void closeConnection() {
-        Session session = this.session;
         try {
             connectionState = ConnectionState.CLOSING;
             if (session != null && session.isOpen()) {
                 logger.debug("{} : Closing the session", endpointId);
                 session.close(StatusCode.NORMAL, "bye");
-                this.session = session;
             }
         } catch (Exception e) {
             logger.error("{} : An exception occurred while closing the session : {}", endpointId, e.getMessage());
@@ -136,14 +138,14 @@ public class TeslaEventEndpoint implements WebSocketListener, WebSocketPingPongL
     }
 
     @Override
-    public void onWebSocketClose(int statusCode, @Nullable String reason) {
+    public void onWebSocketClose(int statusCode, String reason) {
         logger.debug("{} : Closed the session with status {} for reason {}", endpointId, statusCode, reason);
         connectionState = ConnectionState.CLOSED;
         this.session = null;
     }
 
     @Override
-    public void onWebSocketText(@Nullable String message) {
+    public void onWebSocketText(String message) {
         // NoOp
     }
 
@@ -156,13 +158,10 @@ public class TeslaEventEndpoint implements WebSocketListener, WebSocketPingPongL
         try {
             while ((str = in.readLine()) != null) {
                 logger.trace("{} : Received raw data '{}'", endpointId, str);
-                EventHandler eventHandler = this.eventHandler;
-                if (eventHandler != null) {
+                if (this.eventHandler != null) {
                     try {
                         Event event = gson.fromJson(str, Event.class);
-                        if (event != null) {
-                            eventHandler.handleEvent(event);
-                        }
+                        this.eventHandler.handleEvent(event);
                     } catch (RuntimeException e) {
                         logger.error("{} : An exception occurred while processing raw data : {}", endpointId,
                                 e.getMessage());
@@ -177,14 +176,12 @@ public class TeslaEventEndpoint implements WebSocketListener, WebSocketPingPongL
     @Override
     public void onWebSocketError(Throwable cause) {
         logger.error("{} : An error occurred in the session : {}", endpointId, cause.getMessage());
-        Session session = this.session;
         if (session != null && session.isOpen()) {
             session.close(StatusCode.ABNORMAL, "Session Error");
         }
     }
 
     public void sendMessage(String message) throws IOException {
-        Session session = this.session;
         try {
             if (session != null) {
                 logger.debug("{} : Sending raw data '{}'", endpointId, message);
@@ -201,7 +198,6 @@ public class TeslaEventEndpoint implements WebSocketListener, WebSocketPingPongL
     }
 
     public void ping() {
-        Session session = this.session;
         try {
             if (session != null) {
                 ByteBuffer buffer = ByteBuffer.allocate(8).putLong(System.nanoTime()).flip();
@@ -213,9 +209,8 @@ public class TeslaEventEndpoint implements WebSocketListener, WebSocketPingPongL
     }
 
     @Override
-    public void onWebSocketPing(@Nullable ByteBuffer payload) {
+    public void onWebSocketPing(ByteBuffer payload) {
         ByteBuffer buffer = ByteBuffer.allocate(8).putLong(System.nanoTime()).flip();
-        Session session = this.session;
         try {
             if (session != null) {
                 session.getRemote().sendPing(buffer);
@@ -226,10 +221,7 @@ public class TeslaEventEndpoint implements WebSocketListener, WebSocketPingPongL
     }
 
     @Override
-    public void onWebSocketPong(@Nullable ByteBuffer payload) {
-        if (payload == null) {
-            return;
-        }
+    public void onWebSocketPong(ByteBuffer payload) {
         long start = payload.getLong();
         long roundTrip = System.nanoTime() - start;
 

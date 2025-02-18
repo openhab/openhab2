@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,6 +17,7 @@ import static org.openhab.binding.boschshc.internal.devices.BoschSHCBindingConst
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.binding.boschshc.internal.devices.AbstractSmokeDetectorHandler;
 import org.openhab.binding.boschshc.internal.exceptions.BoschSHCException;
 import org.openhab.binding.boschshc.internal.services.communicationquality.CommunicationQualityService;
 import org.openhab.binding.boschshc.internal.services.communicationquality.dto.CommunicationQualityServiceState;
@@ -28,7 +29,7 @@ import org.openhab.core.thing.Thing;
  * @author Patrick Gell - Initial contribution
  */
 @NonNullByDefault
-public class SmokeDetector2Handler extends AbstractSmokeDetectorHandlerWithAlarmService {
+public class SmokeDetector2Handler extends AbstractSmokeDetectorHandler {
 
     public SmokeDetector2Handler(Thing thing) {
         super(thing);

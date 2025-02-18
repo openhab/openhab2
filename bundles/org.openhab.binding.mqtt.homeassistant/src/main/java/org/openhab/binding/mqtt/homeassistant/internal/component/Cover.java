@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -88,8 +88,8 @@ public class Cover extends AbstractComponent<Cover.ChannelConfiguration> {
     @Nullable
     ComponentChannel stateChannel = null;
 
-    public Cover(ComponentFactory.ComponentConfiguration componentConfiguration) {
-        super(componentConfiguration, ChannelConfiguration.class);
+    public Cover(ComponentFactory.ComponentConfiguration componentConfiguration, boolean newStyleChannels) {
+        super(componentConfiguration, ChannelConfiguration.class, newStyleChannels);
 
         boolean optimistic = false;
         Boolean localOptimistic = channelConfiguration.optimistic;
@@ -159,7 +159,6 @@ public class Cover extends AbstractComponent<Cover.ChannelConfiguration> {
                     }
                     return true;
                 }).withAutoUpdatePolicy(optimistic ? AutoUpdatePolicy.RECOMMEND : null).build();
-
         finalizeChannels();
     }
 }

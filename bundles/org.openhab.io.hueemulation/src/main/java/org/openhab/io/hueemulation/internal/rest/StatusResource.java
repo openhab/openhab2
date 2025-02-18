@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -66,7 +66,7 @@ public class StatusResource implements RegistryListener {
     @Reference
     protected @NonNullByDefault({}) UpnpService upnpService;
 
-    private enum UpnpStatus {
+    private enum upnpStatus {
         service_not_registered,
         service_registered_but_no_UPnP_traffic_yet,
         upnp_announcement_thread_not_running,
@@ -74,7 +74,7 @@ public class StatusResource implements RegistryListener {
         success
     }
 
-    private UpnpStatus selfTestUpnpFound = UpnpStatus.service_not_registered;
+    private upnpStatus selfTestUpnpFound = upnpStatus.service_not_registered;
 
     private final Logger logger = LoggerFactory.getLogger(StatusResource.class);
 
@@ -89,7 +89,7 @@ public class StatusResource implements RegistryListener {
             return;
         }
 
-        selfTestUpnpFound = UpnpStatus.service_registered_but_no_UPnP_traffic_yet;
+        selfTestUpnpFound = upnpStatus.service_registered_but_no_UPnP_traffic_yet;
 
         for (RemoteDevice device : registry.getRemoteDevices()) {
             remoteDeviceAdded(registry, device);
@@ -171,7 +171,7 @@ public class StatusResource implements RegistryListener {
         }
 
         if (!localDiscovery.upnpAnnouncementThreadRunning()) {
-            selfTestUpnpFound = UpnpStatus.upnp_announcement_thread_not_running;
+            selfTestUpnpFound = upnpStatus.upnp_announcement_thread_not_running;
         }
 
         return String.format(format, cs.ds.config.linkbutton ? "On" : "Off",
@@ -194,7 +194,7 @@ public class StatusResource implements RegistryListener {
     @NonNullByDefault({})
     @Override
     public void remoteDeviceAdded(Registry registry, RemoteDevice device) {
-        if (selfTestUpnpFound == UpnpStatus.success) {
+        if (selfTestUpnpFound == upnpStatus.success) {
             return;
         }
         checkForDevice(getDetails(device));
@@ -211,10 +211,10 @@ public class StatusResource implements RegistryListener {
     }
 
     private void checkForDevice(DeviceDetails details) {
-        selfTestUpnpFound = UpnpStatus.any_device_but_not_this_one_found;
+        selfTestUpnpFound = upnpStatus.any_device_but_not_this_one_found;
         try {
             if (cs.ds.config.bridgeid.equals(details.getSerialNumber())) {
-                selfTestUpnpFound = UpnpStatus.success;
+                selfTestUpnpFound = upnpStatus.success;
             }
         } catch (Exception e) { // We really don't want the service to fail on any exception
             logger.warn("upnp service: adding services failed: {}", details.getFriendlyName(), e);
@@ -230,14 +230,14 @@ public class StatusResource implements RegistryListener {
     @Override
     public void remoteDeviceRemoved(Registry registry, RemoteDevice device) {
         UpnpServer localDiscovery = discovery;
-        if (selfTestUpnpFound != UpnpStatus.success || localDiscovery == null
+        if (selfTestUpnpFound != upnpStatus.success || localDiscovery == null
                 || localDiscovery.upnpAnnouncementThreadRunning()) {
             return;
         }
         DeviceDetails details = getDetails(device);
         String serialNo = details.getSerialNumber();
         if (cs.ds.config.bridgeid.equals(serialNo)) {
-            selfTestUpnpFound = UpnpStatus.any_device_but_not_this_one_found;
+            selfTestUpnpFound = upnpStatus.any_device_but_not_this_one_found;
         }
     }
 
@@ -245,7 +245,7 @@ public class StatusResource implements RegistryListener {
     @Override
     public void localDeviceAdded(Registry registry, LocalDevice device) {
         UpnpServer localDiscovery = discovery;
-        if (selfTestUpnpFound == UpnpStatus.success || localDiscovery == null
+        if (selfTestUpnpFound == upnpStatus.success || localDiscovery == null
                 || localDiscovery.upnpAnnouncementThreadRunning()) {
             return;
         }
@@ -264,6 +264,6 @@ public class StatusResource implements RegistryListener {
 
     @Override
     public void afterShutdown() {
-        selfTestUpnpFound = UpnpStatus.service_not_registered;
+        selfTestUpnpFound = upnpStatus.service_not_registered;
     }
 }

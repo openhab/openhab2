@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,7 +19,6 @@ import java.util.stream.Stream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.binding.nanoleaf.internal.handler.NanoLeafStateDescriptionProvider;
 import org.openhab.binding.nanoleaf.internal.handler.NanoleafControllerHandler;
 import org.openhab.binding.nanoleaf.internal.handler.NanoleafPanelHandler;
 import org.openhab.core.io.net.http.HttpClientFactory;
@@ -52,13 +51,10 @@ public class NanoleafHandlerFactory extends BaseThingHandlerFactory {
 
     private final Logger logger = LoggerFactory.getLogger(NanoleafHandlerFactory.class);
     private final HttpClientFactory httpClientFactory;
-    private final NanoLeafStateDescriptionProvider nanoLeafStateDescriptionProvider;
 
     @Activate
-    public NanoleafHandlerFactory(@Reference HttpClientFactory httpClientFactory,
-            @Reference NanoLeafStateDescriptionProvider nanoLeafStateDescriptionProvider) {
+    public NanoleafHandlerFactory(@Reference HttpClientFactory httpClientFactory) {
         this.httpClientFactory = httpClientFactory;
-        this.nanoLeafStateDescriptionProvider = nanoLeafStateDescriptionProvider;
     }
 
     @Override
@@ -71,8 +67,7 @@ public class NanoleafHandlerFactory extends BaseThingHandlerFactory {
     protected ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
         if (NanoleafBindingConstants.THING_TYPE_CONTROLLER.equals(thingTypeUID)) {
-            NanoleafControllerHandler handler = new NanoleafControllerHandler((Bridge) thing, this.httpClientFactory,
-                    this.nanoLeafStateDescriptionProvider);
+            NanoleafControllerHandler handler = new NanoleafControllerHandler((Bridge) thing, this.httpClientFactory);
             logger.debug("Nanoleaf controller handler created.");
             return handler;
         } else if (NanoleafBindingConstants.THING_TYPE_LIGHT_PANEL.equals(thingTypeUID)) {

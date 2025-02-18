@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -28,10 +28,7 @@ public class EaseeConfiguration {
 
     private Integer asyncTimeout = 120;
     private Integer syncTimeout = 120;
-    private Integer dataPollingInterval = 60;
-    private Integer sessionDataPollingInterval = 360;
-    private Integer webRequestInitialDelay = 10;
-    private Integer webRequestInterval = 2;
+    private Integer dataPollingInterval = 120;
 
     public String getUsername() {
         return username;
@@ -81,39 +78,13 @@ public class EaseeConfiguration {
         this.dataPollingInterval = dataPollingInterval;
     }
 
-    public Integer getSessionDataPollingInterval() {
-        return sessionDataPollingInterval;
-    }
-
-    public void setSessionDataPollingInterval(Integer sessionDataPollingInterval) {
-        this.sessionDataPollingInterval = sessionDataPollingInterval;
-    }
-
-    public Integer getWebRequestInitialDelay() {
-        return webRequestInitialDelay;
-    }
-
-    public void setWebRequestInitialDelay(Integer webRequestInitialDelay) {
-        this.webRequestInitialDelay = webRequestInitialDelay;
-    }
-
-    public Integer getWebRequestInterval() {
-        return webRequestInterval;
-    }
-
-    public void setWebRequestInterval(Integer webRequestInterval) {
-        this.webRequestInterval = webRequestInterval;
-    }
-
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("EaseeConfiguration [username=").append(username).append(", password=").append(password)
                 .append(", siteId=").append(siteId).append(", asyncTimeout=").append(asyncTimeout)
                 .append(", syncTimeout=").append(syncTimeout).append(", dataPollingInterval=")
-                .append(dataPollingInterval).append(", sessionDataPollingInterval=").append(sessionDataPollingInterval)
-                .append(", webRequestInitialDelay=").append(webRequestInitialDelay).append(", webRequestInterval=")
-                .append(webRequestInterval).append("]");
+                .append(dataPollingInterval).append("]");
         return builder.toString();
     }
 }

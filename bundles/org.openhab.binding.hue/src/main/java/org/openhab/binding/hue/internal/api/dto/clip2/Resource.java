@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,6 +17,8 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -269,7 +271,7 @@ public class Resource {
         return new DecimalType((controlIds.getOrDefault(getId(), 0).intValue() * 1000) + event.ordinal());
     }
 
-    public State getButtonLastUpdatedState() {
+    public State getButtonLastUpdatedState(ZoneId zoneId) {
         Button button = this.button;
         if (button == null) {
             return UnDefType.NULL;
@@ -282,7 +284,7 @@ public class Resource {
         if (Instant.EPOCH.equals(lastChanged)) {
             return UnDefType.UNDEF;
         }
-        return new DateTimeType(lastChanged);
+        return new DateTimeType(ZonedDateTime.ofInstant(lastChanged, zoneId));
     }
 
     public List<ResourceReference> getChildren() {
@@ -386,9 +388,11 @@ public class Resource {
         return UnDefType.NULL;
     }
 
-    public State getContactLastUpdatedState() {
+    public State getContactLastUpdatedState(ZoneId zoneId) {
         ContactReport contactReport = this.contactReport;
-        return Objects.nonNull(contactReport) ? new DateTimeType(contactReport.getLastChanged()) : UnDefType.NULL;
+        return Objects.nonNull(contactReport)
+                ? new DateTimeType(ZonedDateTime.ofInstant(contactReport.getLastChanged(), zoneId))
+                : UnDefType.NULL;
     }
 
     public State getContactState() {
@@ -502,7 +506,7 @@ public class Resource {
         return new QuantityType<>(Math.pow(10f, (double) lightLevelReport.getLightLevel() / 10000f) - 1f, Units.LUX);
     }
 
-    public State getLightLevelLastUpdatedState() {
+    public State getLightLevelLastUpdatedState(ZoneId zoneId) {
         LightLevel lightLevel = this.light;
         if (lightLevel == null) {
             return UnDefType.NULL;
@@ -515,7 +519,7 @@ public class Resource {
         if (Instant.EPOCH.equals(lastChanged)) {
             return UnDefType.UNDEF;
         }
-        return new DateTimeType(lastChanged);
+        return new DateTimeType(ZonedDateTime.ofInstant(lastChanged, zoneId));
     }
 
     public @Nullable MetaData getMetaData() {
@@ -548,7 +552,7 @@ public class Resource {
         return OnOffType.from(motionReport.isMotion());
     }
 
-    public State getMotionLastUpdatedState() {
+    public State getMotionLastUpdatedState(ZoneId zoneId) {
         Motion motion = this.motion;
         if (motion == null) {
             return UnDefType.NULL;
@@ -561,7 +565,7 @@ public class Resource {
         if (Instant.EPOCH.equals(lastChanged)) {
             return UnDefType.UNDEF;
         }
-        return new DateTimeType(lastChanged);
+        return new DateTimeType(ZonedDateTime.ofInstant(lastChanged, zoneId));
     }
 
     public State getMotionValidState() {
@@ -640,7 +644,7 @@ public class Resource {
         return rotation.getStepsState();
     }
 
-    public State getRotaryStepsLastUpdatedState() {
+    public State getRotaryStepsLastUpdatedState(ZoneId zoneId) {
         RelativeRotary relativeRotary = this.relativeRotary;
         if (relativeRotary == null) {
             return UnDefType.NULL;
@@ -653,7 +657,7 @@ public class Resource {
         if (Instant.EPOCH.equals(lastChanged)) {
             return UnDefType.UNDEF;
         }
-        return new DateTimeType(lastChanged);
+        return new DateTimeType(ZonedDateTime.ofInstant(lastChanged, zoneId));
     }
 
     /**
@@ -734,9 +738,10 @@ public class Resource {
         return new JsonObject();
     }
 
-    public State getTamperLastUpdatedState() {
+    public State getTamperLastUpdatedState(ZoneId zoneId) {
         TamperReport report = getTamperReportsLatest();
-        return Objects.nonNull(report) ? new DateTimeType(report.getLastChanged()) : UnDefType.NULL;
+        return Objects.nonNull(report) ? new DateTimeType(ZonedDateTime.ofInstant(report.getLastChanged(), zoneId))
+                : UnDefType.NULL;
     }
 
     /**
@@ -776,7 +781,7 @@ public class Resource {
         return new QuantityType<>(temperatureReport.getTemperature(), SIUnits.CELSIUS);
     }
 
-    public State getTemperatureLastUpdatedState() {
+    public State getTemperatureLastUpdatedState(ZoneId zoneId) {
         Temperature temperature = this.temperature;
         if (temperature == null) {
             return UnDefType.NULL;
@@ -789,7 +794,7 @@ public class Resource {
         if (Instant.EPOCH.equals(lastChanged)) {
             return UnDefType.UNDEF;
         }
-        return new DateTimeType(lastChanged);
+        return new DateTimeType(ZonedDateTime.ofInstant(lastChanged, zoneId));
     }
 
     public State getTemperatureValidState() {

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -133,10 +133,11 @@ public class InsteonScene implements Scene {
      * @param entry the scene entry to add
      */
     private void addEntry(SceneEntry entry) {
+        logger.trace("adding entry to scene {}: {}", group, entry);
+
         synchronized (entries) {
             if (entries.add(entry)) {
                 entry.register();
-                logger.trace("added entry to scene {}: {}", group, entry);
             }
         }
     }
@@ -167,6 +168,8 @@ public class InsteonScene implements Scene {
      * @param address the device address
      */
     public void deleteEntries(InsteonAddress address) {
+        logger.trace("removing entries from scene {} for device {}", group, address);
+
         getEntries(address).forEach(this::deleteEntry);
     }
 
@@ -174,7 +177,9 @@ public class InsteonScene implements Scene {
      * Updates all entries for this scene
      */
     public void updateEntries() {
-        deleteEntries();
+        synchronized (entries) {
+            entries.clear();
+        }
 
         InsteonModem modem = getModem();
         if (modem != null) {
@@ -199,7 +204,7 @@ public class InsteonScene implements Scene {
 
         logger.trace("updating entries for scene {} device {}", group, address);
 
-        deleteEntries(address);
+        getEntries(address).forEach(this::deleteEntry);
 
         InsteonModem modem = getModem();
         if (modem != null) {
@@ -320,17 +325,13 @@ public class InsteonScene implements Scene {
     public class SceneEntry implements FeatureListener {
         private InsteonAddress address;
         private DeviceFeature feature;
-        private State onState;
-        private @Nullable RampRate rampRate;
+        private byte[] data;
         private State state = UnDefType.NULL;
 
         public SceneEntry(InsteonAddress address, DeviceFeature feature, byte[] data) {
             this.address = address;
             this.feature = feature;
-            this.onState = OnLevel.getState(Byte.toUnsignedInt(data[0]), feature.getType());
-            this.rampRate = RampRate.supportsFeatureType(feature.getType())
-                    ? RampRate.valueOf(Byte.toUnsignedInt(data[1]))
-                    : null;
+            this.data = data;
         }
 
         public InsteonAddress getAddress() {
@@ -339,6 +340,14 @@ public class InsteonScene implements Scene {
 
         public DeviceFeature getFeature() {
             return feature;
+        }
+
+        public State getOnState() {
+            return OnLevel.getState(Byte.toUnsignedInt(data[0]), feature.getType());
+        }
+
+        public RampRate getRampRate() {
+            return RampRate.valueOf(Byte.toUnsignedInt(data[1]));
         }
 
         public State getState() {
@@ -350,7 +359,7 @@ public class InsteonScene implements Scene {
         }
 
         public boolean isStateOn() {
-            return onState.equals(state);
+            return getOnState().equals(state);
         }
 
         public void setState(State state) {
@@ -369,9 +378,9 @@ public class InsteonScene implements Scene {
 
         @Override
         public String toString() {
-            String s = address + " " + feature.getName() + " currentState: " + state + " onState: " + onState;
-            if (rampRate != null) {
-                s += " rampRate: " + rampRate;
+            String s = address + " " + feature.getName() + " currentState: " + state + " onState: " + getOnState();
+            if (RampRate.supportsFeatureType(feature.getType())) {
+                s += " rampRate: " + getRampRate();
             }
             return s;
         }

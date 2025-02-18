@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -58,13 +58,13 @@ public class DataPayload {
     private int longPowerFailCount;
 
     @SerializedName("active_voltage_v")
-    private double activeVoltage;
+    private int activeVoltage;
     @SerializedName("active_voltage_l1_v")
-    private double activeVoltageL1;
+    private int activeVoltageL1;
     @SerializedName("active_voltage_l2_v")
-    private double activeVoltageL2;
+    private int activeVoltageL2;
     @SerializedName("active_voltage_l3_v")
-    private double activeVoltageL3;
+    private int activeVoltageL3;
 
     @SerializedName("active_current_a")
     private double activeCurrent;
@@ -175,7 +175,7 @@ public class DataPayload {
      *
      * @return current active voltage
      */
-    public double getActiveVoltage() {
+    public int getActiveVoltage() {
         return activeVoltage;
     }
 
@@ -184,7 +184,7 @@ public class DataPayload {
      *
      * @return active voltage on phase 1
      */
-    public double getActiveVoltageL1() {
+    public int getActiveVoltageL1() {
         return activeVoltageL1;
     }
 
@@ -193,7 +193,7 @@ public class DataPayload {
      *
      * @return active voltage on phase 2
      */
-    public double getActiveVoltageL2() {
+    public int getActiveVoltageL2() {
         return activeVoltageL2;
     }
 
@@ -202,7 +202,7 @@ public class DataPayload {
      *
      * @return active voltage on phase 3
      */
-    public double getActiveVoltageL3() {
+    public int getActiveVoltageL3() {
         return activeVoltageL3;
     }
 

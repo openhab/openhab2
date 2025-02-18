@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -36,7 +36,6 @@ package org.openhab.binding.lgwebos.internal.handler.command;
 
 import java.util.function.Function;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.lgwebos.internal.handler.core.ResponseListener;
 
@@ -49,7 +48,6 @@ import com.google.gson.JsonObject;
  * @author Hyun Kook Khang - Connect SDK initial contribution
  * @author Sebastian Prehn - Adoption for openHAB
  */
-@NonNullByDefault
 public class ServiceCommand<T> {
 
     protected enum Type {
@@ -58,13 +56,13 @@ public class ServiceCommand<T> {
     }
 
     protected Type type;
-    protected @Nullable JsonObject payload;
+    protected JsonObject payload;
     protected String target;
     protected Function<JsonObject, @Nullable T> converter;
 
     ResponseListener<T> responseListener;
 
-    public ServiceCommand(String targetURL, @Nullable JsonObject payload, Function<JsonObject, @Nullable T> converter,
+    public ServiceCommand(String targetURL, JsonObject payload, Function<JsonObject, @Nullable T> converter,
             ResponseListener<T> listener) {
         this.target = targetURL;
         this.payload = payload;
@@ -73,7 +71,7 @@ public class ServiceCommand<T> {
         this.type = Type.request;
     }
 
-    public @Nullable JsonElement getPayload() {
+    public JsonElement getPayload() {
         return payload;
     }
 
@@ -85,10 +83,8 @@ public class ServiceCommand<T> {
         return target;
     }
 
-    public void processResponse(@Nullable JsonObject response) {
-        if (response != null) {
-            this.getResponseListener().onSuccess(this.converter.apply(response));
-        }
+    public void processResponse(JsonObject response) {
+        this.getResponseListener().onSuccess(this.converter.apply(response));
     }
 
     public void processError(String error) {

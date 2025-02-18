@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,6 @@
 package org.openhab.persistence.jdbc.internal.db;
 
 import java.sql.SQLException;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -176,7 +175,8 @@ public class JdbcOracleDAO extends JdbcBaseDAO {
             throw new JdbcSQLException(e);
         }
         // We need to return the itemId, but Yank.insert does not retrieve the value from Oracle. So do an explicit
-        // query for it.
+        // query
+        // for it.
         sql = StringUtilsExt.replaceArrayMerge(sqlGetItemTableID, new String[] { "#itemsManageTable#", "#colname#" },
                 new String[] { vo.getItemsManageTable(), vo.getColname() });
         logger.debug("JDBC::doGetEntryIdInItemsTable sql={}", sql);
@@ -288,16 +288,16 @@ public class JdbcOracleDAO extends JdbcBaseDAO {
     }
 
     @Override
-    protected Instant objectAsInstant(Object v) {
+    protected ZonedDateTime objectAsZonedDateTime(Object v) {
         if (v instanceof TIMESTAMP objectAsOracleTimestamp) {
             try {
-                return objectAsOracleTimestamp.timestampValue().toInstant();
+                return objectAsOracleTimestamp.timestampValue().toInstant().atZone(ZoneId.systemDefault());
             } catch (SQLException e) {
                 throw new UnsupportedOperationException("Date of type '" + v.getClass().getName()
                         + "', no Timestamp representation exists for '" + objectAsOracleTimestamp.toString() + "'");
             }
         } else {
-            return super.objectAsInstant(v);
+            return super.objectAsZonedDateTime(v);
         }
     }
 }

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -45,11 +45,11 @@ public interface LocalData {
     LocalConnectRawDataBean getData();
 
     default double getPV1Voltage() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getPV1Current() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default short getPV1Power() {
@@ -57,11 +57,11 @@ public interface LocalData {
     }
 
     default double getPV2Voltage() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getPV2Current() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default short getPV2Power() {
@@ -77,11 +77,11 @@ public interface LocalData {
     }
 
     default double getBatteryVoltage() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getBatteryCurrent() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default short getBatteryPower() {
@@ -104,7 +104,7 @@ public interface LocalData {
         return Short.MIN_VALUE;
     }
 
-    default int getFeedInPower() {
+    default short getFeedInPower() {
         return Short.MIN_VALUE;
     }
 
@@ -113,55 +113,55 @@ public interface LocalData {
     }
 
     default double getTotalEnergy() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
-    default double getTotalBatteryDischargeEnergy() {
-        return Integer.MIN_VALUE;
+    default short getTotalBatteryDischargeEnergy() {
+        return Short.MIN_VALUE;
     }
 
-    default double getTotalBatteryChargeEnergy() {
-        return Integer.MIN_VALUE;
+    default short getTotalBatteryChargeEnergy() {
+        return Short.MIN_VALUE;
     }
 
     default double getTotalPVEnergy() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
-    default double getTotalFeedInEnergy() {
-        return Integer.MIN_VALUE;
+    default short getTotalFeedInEnergy() {
+        return Short.MIN_VALUE;
     }
 
     default double getTotalConsumption() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getTodayEnergy() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getTodayFeedInEnergy() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getTodayConsumption() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getTodayBatteryDischargeEnergy() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getTodayBatteryChargeEnergy() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getInverterVoltage() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getInverterCurrent() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default short getInverterOutputPower() {
@@ -169,31 +169,31 @@ public interface LocalData {
     }
 
     default double getInverterFrequency() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getVoltagePhase1() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getVoltagePhase2() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getVoltagePhase3() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getCurrentPhase1() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getCurrentPhase2() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getCurrentPhase3() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default short getOutputPowerPhase1() {
@@ -213,15 +213,15 @@ public interface LocalData {
     }
 
     default double getFrequencyPhase1() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getFrequencyPhase2() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default double getFrequencyPhase3() {
-        return Integer.MIN_VALUE;
+        return Short.MIN_VALUE;
     }
 
     default short getInverterWorkModeCode() {

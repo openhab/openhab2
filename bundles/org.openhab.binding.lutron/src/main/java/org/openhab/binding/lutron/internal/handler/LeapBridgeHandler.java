@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -304,12 +304,12 @@ public class LeapBridgeHandler extends LutronBridgeHandler implements LeapMessag
 
         updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE, STATUS_INITIALIZING);
 
-        Thread readerThread = new Thread(this::readerThreadJob, "OH-binding-" + getThing().getUID() + "-BridgeReader");
+        Thread readerThread = new Thread(this::readerThreadJob, "Lutron reader");
         readerThread.setDaemon(true);
         readerThread.start();
         this.readerThread = readerThread;
 
-        Thread senderThread = new Thread(this::senderThreadJob, "OH-binding-" + getThing().getUID() + "-BridgeSender");
+        Thread senderThread = new Thread(this::senderThreadJob, "Lutron sender");
         senderThread.setDaemon(true);
         senderThread.start();
         this.senderThread = senderThread;

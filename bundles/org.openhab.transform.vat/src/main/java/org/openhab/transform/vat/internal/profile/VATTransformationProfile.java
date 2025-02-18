@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,7 +15,6 @@ package org.openhab.transform.vat.internal.profile;
 import static org.openhab.transform.vat.internal.VATTransformationConstants.*;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.core.i18n.LocaleProvider;
@@ -33,7 +32,6 @@ import org.openhab.core.types.State;
 import org.openhab.core.types.TimeSeries;
 import org.openhab.core.types.Type;
 import org.openhab.core.types.UnDefType;
-import org.openhab.transform.vat.internal.RateProvider;
 import org.openhab.transform.vat.internal.config.VATConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,17 +49,15 @@ public class VATTransformationProfile implements TimeSeriesProfile {
     private final ProfileCallback callback;
     private final TransformationService service;
     private final LocaleProvider localeProvider;
-    private final RateProvider rateProvider;
-    private final VATConfig configuration;
+
+    private VATConfig configuration;
 
     public VATTransformationProfile(final ProfileCallback callback, final TransformationService service,
-            final ProfileContext context, final LocaleProvider localeProvider, final RateProvider rateProvider) {
+            final ProfileContext context, LocaleProvider localeProvider) {
         this.callback = callback;
         this.service = service;
         this.localeProvider = localeProvider;
-        this.rateProvider = rateProvider;
-
-        configuration = context.getConfiguration().as(VATConfig.class);
+        this.configuration = context.getConfiguration().as(VATConfig.class);
     }
 
     @Override
@@ -80,25 +76,25 @@ public class VATTransformationProfile implements TimeSeriesProfile {
 
     @Override
     public void onCommandFromHandler(Command command) {
-        callback.sendCommand((Command) transformState(command, Instant.now()));
+        callback.sendCommand((Command) transformState(command));
     }
 
     @Override
     public void onStateUpdateFromHandler(State state) {
-        callback.sendUpdate((State) transformState(state, Instant.now()));
+        callback.sendUpdate((State) transformState(state));
     }
 
     @Override
     public void onTimeSeriesFromHandler(TimeSeries timeSeries) {
         TimeSeries transformedTimeSeries = new TimeSeries(timeSeries.getPolicy());
-        timeSeries.getStates().forEach(entry -> transformedTimeSeries.add(entry.timestamp(),
-                (State) transformState(entry.state(), entry.timestamp())));
+        timeSeries.getStates()
+                .forEach(entry -> transformedTimeSeries.add(entry.timestamp(), (State) transformState(entry.state())));
         callback.sendTimeSeries(transformedTimeSeries);
     }
 
-    private Type transformState(Type state, Instant time) {
+    private Type transformState(Type state) {
         String result = state.toFullString();
-        String percentage = getVATPercentage(time);
+        String percentage = getVATPercentage();
         try {
             result = TransformationHelper.transform(service, percentage, "%s", result);
         } catch (TransformationException e) {
@@ -114,24 +110,23 @@ public class VATTransformationProfile implements TimeSeriesProfile {
             } else if (state instanceof UnDefType) {
                 resultType = UnDefType.valueOf(result);
             }
-            logger.debug("Transformed '{}' into '{}' at {}", state, resultType, time);
+            logger.debug("Transformed '{}' into '{}'", state, resultType);
         }
         return resultType;
     }
 
-    private String getVATPercentage(Instant time) {
+    private String getVATPercentage() {
         if (!configuration.percentage.isBlank()) {
             return getOverriddenVAT();
         }
 
         String country = localeProvider.getLocale().getCountry();
-        BigDecimal rate = rateProvider.getPercentage(country, time);
-
+        String rate = RATES.get(country);
         if (rate == null) {
-            logger.warn("No VAT rate for country {} at {}", country, time);
+            logger.warn("No VAT rate for country {}", country);
             return "0";
         }
-        return rate.toString();
+        return rate;
     }
 
     private String getOverriddenVAT() {

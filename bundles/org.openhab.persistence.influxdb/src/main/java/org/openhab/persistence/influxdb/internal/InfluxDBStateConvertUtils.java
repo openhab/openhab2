@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,6 +14,8 @@ package org.openhab.persistence.influxdb.internal;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.util.TimeZone;
 
 import javax.measure.Unit;
 
@@ -83,7 +85,7 @@ public class InfluxDBStateConvertUtils {
         } else if (state instanceof OpenClosedType) {
             value = state == OpenClosedType.OPEN ? DIGITAL_VALUE_ON : DIGITAL_VALUE_OFF;
         } else if (state instanceof DateTimeType type) {
-            value = type.getInstant().toEpochMilli();
+            value = type.getZonedDateTime().toInstant().toEpochMilli();
         } else {
             value = state.toFullString();
         }
@@ -138,7 +140,9 @@ public class InfluxDBStateConvertUtils {
         } else if (item instanceof RollershutterItem) {
             return new PercentType(valueStr);
         } else if (item instanceof DateTimeItem) {
-            return new DateTimeType(Instant.ofEpochMilli(new BigDecimal(valueStr).longValue()));
+            Instant i = Instant.ofEpochMilli(new BigDecimal(valueStr).longValue());
+            ZonedDateTime z = ZonedDateTime.ofInstant(i, TimeZone.getDefault().toZoneId());
+            return new DateTimeType(z);
         } else if (item instanceof PlayerItem) {
             try {
                 return PlayPauseType.valueOf(valueStr);

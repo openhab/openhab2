@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -365,19 +365,13 @@ public class SpeedtestHandler extends BaseThingHandler {
                 isp = tmpCont.getIsp();
                 interfaceInternalIp = tmpCont.getInterface().getInternalIp();
                 interfaceExternalIp = tmpCont.getInterface().getExternalIp();
-                if (tmpCont.getResult().isPersisted()) {
-                    resultUrl = tmpCont.getResult().getUrl();
-                    String url = String.valueOf(resultUrl) + ".png";
-                    logger.debug("Downloading result image from: {}", url);
-                    RawType image = HttpUtil.downloadImage(url);
-                    if (image != null) {
-                        resultImage = image;
-                    } else {
-                        resultImage = UnDefType.NULL;
-                    }
+                resultUrl = tmpCont.getResult().getUrl();
+                String url = String.valueOf(resultUrl) + ".png";
+                logger.debug("Downloading result image from: {}", url);
+                RawType image = HttpUtil.downloadImage(url);
+                if (image != null) {
+                    resultImage = image;
                 } else {
-                    logger.debug("Result image not persisted");
-                    resultUrl = "";
                     resultImage = UnDefType.NULL;
                 }
 

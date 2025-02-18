@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+/**
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,6 +13,8 @@
 package org.openhab.binding.insteon.internal.transport;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -22,6 +24,8 @@ import org.openhab.core.io.transport.serial.SerialPort;
 import org.openhab.core.io.transport.serial.SerialPortIdentifier;
 import org.openhab.core.io.transport.serial.SerialPortManager;
 import org.openhab.core.io.transport.serial.UnsupportedCommOperationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implements IOStream for serial devices
@@ -33,6 +37,8 @@ import org.openhab.core.io.transport.serial.UnsupportedCommOperationException;
  */
 @NonNullByDefault
 public class SerialIOStream extends IOStream {
+    private final Logger logger = LoggerFactory.getLogger(SerialIOStream.class);
+
     private String name;
     private int baudRate;
     private SerialPortManager serialPortManager;
@@ -45,8 +51,13 @@ public class SerialIOStream extends IOStream {
     }
 
     @Override
+    public boolean isOpen() {
+        return port != null;
+    }
+
+    @Override
     public boolean open() {
-        if (port != null) {
+        if (isOpen()) {
             logger.warn("serial port is already open");
             return false;
         }
@@ -82,7 +93,25 @@ public class SerialIOStream extends IOStream {
 
     @Override
     public void close() {
-        super.close();
+        InputStream in = this.in;
+        if (in != null) {
+            try {
+                in.close();
+            } catch (IOException e) {
+                logger.debug("failed to close input stream", e);
+            }
+            this.in = null;
+        }
+
+        OutputStream out = this.out;
+        if (out != null) {
+            try {
+                out.close();
+            } catch (IOException e) {
+                logger.debug("failed to close output stream", e);
+            }
+            this.out = null;
+        }
 
         SerialPort port = this.port;
         if (port != null) {
